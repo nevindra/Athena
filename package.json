@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "cd apps/backend-api && bun run build; cd ../frontend && bun run build",
+    "dev": "concurrently \"cd apps/backend-api && bun run dev\" \"cd apps/frontend && bun run dev\"",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "type": "module",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "concurrently": "^9.1.0",
+    "prettier": "^3.2.5"
+  },
+  "name": "with-vite",
+  "packageManager": "bun@1.2.15",
+  "workspaces": ["apps/*"]
+}
