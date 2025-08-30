@@ -2,20 +2,47 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Overview
+
+**Athena** is an AI chat application with configurable model providers, built as a modern full-stack TypeScript monorepo. The project enables users to interact with various AI models (OpenAI, Gemini, Ollama, custom HTTP APIs) through a polished chat interface with comprehensive model configuration management.
+
 ## Project Structure
 
-This is a monorepo with two main applications:
+This is a monorepo with three main packages:
 
-- **Backend API** (`apps/backend-api/`): Elysia server built with Bun
-- **Frontend** (`apps/frontend/`): React Router v7 application with Tailwind CSS and shadcn/ui components
+- **Backend API** (`apps/backend-api/`): RESTful API server handling AI model configurations and chat operations
+- **Frontend** (`apps/frontend/`): Modern chat interface with comprehensive model management
+- **Shared** (`apps/shared/`): Common types, validators, and utilities shared between frontend and backend
+
+### High-Level Architecture
+
+**Frontend Application**
+- Modern React-based chat interface built with React Router v7
+- Comprehensive AI model configuration system supporting multiple providers
+- Professional UI built with shadcn/ui components and Radix UI primitives
+- Features include model selection, parameter tuning, and provider management
+- Real-time chat functionality with streaming AI responses
+
+**Backend API**
+- High-performance Elysia server running on Bun runtime
+- RESTful API for AI model configuration management
+- Database integration with Drizzle ORM and PostgreSQL
+- Support for multiple AI providers: OpenAI, Gemini, Ollama, and custom HTTP APIs
+- Built-in encryption service for secure API key storage
+
+**Shared Package**
+- Centralized type definitions and validation schemas
+- Zod validators for AI configuration and API contracts
+- Ensures type safety across the entire application stack
 
 ### Key Technologies
 
-- **Backend**: Elysia framework, Bun runtime
-- **Frontend**: React Router v7, Tailwind CSS, shadcn/ui components, TypeScript
-- **Build Tool**: Bun (replaces npm/yarn)
-- **Linting/Formatting**: Biome (replaces ESLint/Prettier)
-- **Package Manager**: Bun (configured in package.json)
+- **Runtime**: Bun (replaces Node.js and npm)
+- **Backend**: Elysia framework, Drizzle ORM, PostgreSQL
+- **Frontend**: React Router v7, Tailwind CSS v4, shadcn/ui components, Radix UI
+- **Shared**: TypeScript, Zod validation
+- **Tooling**: Biome (linting/formatting), TanStack Query (data fetching)
+- **AI Integration**: Vercel AI SDK, OpenAI SDK, Ollama provider
 
 ## Development Commands
 
@@ -57,7 +84,6 @@ bun run start        # Production server
 - No transpilation needed - runs TypeScript natively
 
 ### Frontend (React Router v7)
-- Server-side rendering enabled by default
 - Uses shadcn/ui component library with Radix UI primitives
 - Tailwind CSS for styling with custom configuration
 - File-based routing in `app/routes/` directory
@@ -67,8 +93,6 @@ bun run start        # Production server
 - Biome configuration enforces:
   - Double quotes for strings
   - Semicolons required
-  - 2-space indentation
-  - 80-character line width
 - TypeScript strict mode enabled
 - Path aliases configured: `~` maps to `app/` directory in frontend
 
