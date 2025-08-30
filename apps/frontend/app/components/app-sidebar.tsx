@@ -1,22 +1,14 @@
 "use client";
 
 import {
-  AudioWaveform,
   BookOpen,
   Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
   Home,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
 } from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "~/components/nav-main";
-import { NavProjects } from "~/components/nav-projects";
+import { NavChatHistory } from "~/components/nav-projects";
 import { NavUser } from "~/components/nav-user";
 import {
   Sidebar,
@@ -47,23 +39,6 @@ const data = {
       title: "Knowledge Base",
       url: "#",
       icon: BookOpen,
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
     },
   ],
 };
@@ -97,7 +72,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenu>
         </SidebarGroup>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        <NavChatHistory />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

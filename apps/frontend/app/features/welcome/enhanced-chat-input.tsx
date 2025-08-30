@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
@@ -35,9 +35,28 @@ export function EnhancedChatInput({
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [selectedConfigId, setSelectedConfigId] = useState<string>(selectedModel || "");
+  const [isCompact, setIsCompact] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const { data: configurations, isLoading } = useConfigurations();
+
+  // Calculate if input should be compact based on content
+  useEffect(() => {
+    if (!message.trim()) {
+      setIsCompact(true);
+      return;
+    }
+
+    // Count lines by splitting on newlines
+    const lines = message.split('\n');
+    const hasMultipleLines = lines.length > 2;
+    
+    // Also check if any single line is too long (rough estimate)
+    const hasLongLine = lines.some(line => line.length > 50);
+    
+    setIsCompact(!hasMultipleLines && !hasLongLine);
+  }, [message]);
 
   const handleSubmit = () => {
     if ((message.trim() || files.length > 0) && !disabled) {
@@ -109,16 +128,19 @@ export function EnhancedChatInput({
       {/* Main input container */}
       <div className="relative border border-border/60 rounded-2xl bg-background/50 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
         {/* Text input area */}
-        <div className="px-4 pt-4 pb-3">
+        <div className={`px-4 transition-all duration-200 ${isCompact ? 'pt-2 pb-2' : 'pt-4 pb-3'}`}>
           <Textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
             autoFocus={autoFocus}
-            className="min-h-[80px] max-h-40 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-relaxed placeholder:text-muted-foreground/60"
-            style={{ fieldSizing: 'content' }}
+            className={`${
+              isCompact ? 'min-h-[40px]' : 'min-h-[80px]'
+            } max-h-40 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-relaxed placeholder:text-muted-foreground/60 transition-all duration-200 overflow-y-auto`}
+            rows={isCompact ? 1 : undefined}
           />
         </div>
 
@@ -183,9 +205,9 @@ export function EnhancedChatInput({
             </Button>
           </div>
         </div>
-         <p className="text-xs text-muted-foreground text-center pb-2">
+         {/* <p className="text-xs text-muted-foreground text-center pb-2">
             AI can make mistakes. Check important info.
-          </p>
+          </p> */}
 
         {/* Hidden file input */}
         <input

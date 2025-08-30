@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Card } from "~/components/ui/card";
 import { EnhancedChatInput } from "./enhanced-chat-input";
+import { useCreateSession } from "~/hooks/use-sessions";
 import type { AIConfiguration } from "@athena/shared";
 
 const EXAMPLE_PROMPTS = [
@@ -31,23 +32,38 @@ export function WelcomeScreen() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(null);
+  const createSession = useCreateSession();
 
   const handleSubmit = async (message: string, files?: File[]) => {
     if (!message.trim() && (!files || files.length === 0)) return;
+    if (!selectedConfig) {
+      alert("Please select an AI model first");
+      return;
+    }
 
     setIsLoading(true);
 
-    // Generate unique chat ID
-    const chatId = crypto.randomUUID();
+    try {
+      // Create a new chat session with the initial message
+      const session = await createSession.mutateAsync({
+        userId: "01HZXM0K1QRST9VWXYZ01234AB",
+        configurationId: selectedConfig.id,
+        initialMessage: message.trim(),
+      });
 
-    // Navigate to chat route with the message, files, and selected config
-    navigate(`/chat/${chatId}`, {
-      state: { 
-        initialMessage: message,
-        initialFiles: files,
-        selectedConfig: selectedConfig,
-      },
-    });
+      // Navigate to chat route with the session ID
+      navigate(`/chat/${session.id}`, {
+        state: { 
+          selectedConfig: selectedConfig,
+          initialFiles: files,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to create session:", error);
+      alert("Failed to start chat session. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleModelChange = (_configId: string, config: AIConfiguration) => {

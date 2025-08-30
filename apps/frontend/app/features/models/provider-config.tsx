@@ -2,9 +2,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { AIProvider, AIConfiguration } from "@athena/shared";
-import { GeminiConfig } from "./gemini-config";
-import { HttpApiConfig } from "./http-api-config";
-import { OllamaConfig } from "./ollama-config";
+import { ModelConfig } from "./model-config";
+import type { ProviderType } from "./provider-definitions";
 
 interface ProviderConfigProps {
   provider: AIProvider | null;
@@ -29,16 +28,15 @@ export function ProviderConfig({ provider, onBack, editingConfig }: ProviderConf
   if (!provider) return null;
 
   const renderConfigForm = () => {
-    switch (provider) {
-      case "gemini":
-        return <GeminiConfig editingConfig={editingConfig} onSaved={onBack} />;
-      case "ollama":
-        return <OllamaConfig editingConfig={editingConfig} onSaved={onBack} />;
-      case "http-api":
-        return <HttpApiConfig editingConfig={editingConfig} onSaved={onBack} />;
-      default:
-        return null;
-    }
+    if (!provider) return null;
+    
+    return (
+      <ModelConfig 
+        provider={provider as ProviderType}
+        editingConfig={editingConfig} 
+        onSaved={onBack} 
+      />
+    );
   };
 
   return (
