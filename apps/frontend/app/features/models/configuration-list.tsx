@@ -2,10 +2,12 @@ import { Bot, Globe, Server, Edit, Trash2, Play, Pause, Plus } from "lucide-reac
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
 import { useConfigurations, useDeleteConfiguration, useUpdateConfiguration } from "~/hooks/use-configurations";
 import type { AIConfiguration, AIProvider } from "@athena/shared";
 import { toast } from "sonner";
 import { Link } from "react-router";
+import { useState } from "react";
 
 interface ConfigurationListProps {
   onEditConfiguration?: (config: AIConfiguration) => void;
@@ -33,18 +35,27 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
   const { data: configurations, isLoading, error } = useConfigurations();
   const deleteConfiguration = useDeleteConfiguration();
   const updateConfiguration = useUpdateConfiguration();
+  const [configToDelete, setConfigToDelete] = useState<AIConfiguration | null>(null);
 
-  const handleDelete = async (config: AIConfiguration) => {
-    if (!confirm(`Are you sure you want to delete "${config.name}"?`)) {
-      return;
-    }
+  const handleDeleteClick = (config: AIConfiguration) => {
+    setConfigToDelete(config);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!configToDelete) return;
 
     try {
-      await deleteConfiguration.mutateAsync(config.id);
+      await deleteConfiguration.mutateAsync(configToDelete.id);
       toast.success("Configuration deleted successfully");
+      setConfigToDelete(null);
     } catch (error) {
       toast.error("Failed to delete configuration");
+      setConfigToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setConfigToDelete(null);
   };
 
   const handleToggleActive = async (config: AIConfiguration) => {
@@ -183,7 +194,7 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDelete(config)}
+                      onClick={() => handleDeleteClick(config)}
                       disabled={deleteConfiguration.isPending}
                       className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                       title="Delete"
@@ -197,6 +208,27 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
           );
         })}
       </div>
+
+      <AlertDialog open={!!configToDelete} onOpenChange={() => setConfigToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{configToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={deleteConfiguration.isPending}
+            >
+              {deleteConfiguration.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

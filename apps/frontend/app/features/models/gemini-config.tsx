@@ -16,10 +16,29 @@ import { Slider } from "~/components/ui/slider";
 import { useCreateConfiguration, useTestConnection } from "~/hooks/use-configurations";
 import type { GeminiConfigSettings } from "@athena/shared";
 import { toast } from "sonner";
+import { ModelParams } from "~/components/models/model-params";
+import { CustomSystemPrompt } from "~/components/models/custom-system-prompt";
 
-interface GeminiConfigData extends GeminiConfigSettings {
+interface GeminiConfigData extends Omit<GeminiConfigSettings, 'temperature' | 'maxTokens' | 'topP'> {
   name: string; // Add name field for saving
+  customPrompt?: string; // Add custom prompt field
+  // Allow temporary string values during editing for numeric fields
+  temperature: number | string;
+  maxTokens: number | string;
+  topP: number | string;
 }
+
+// Helper function to convert config to proper numeric types for API
+const prepareSettingsForApi = (config: GeminiConfigData): GeminiConfigSettings => {
+  const { name, customPrompt, ...settings } = config;
+  
+  return {
+    ...settings,
+    temperature: typeof settings.temperature === 'string' ? Number.parseFloat(settings.temperature) || 0.7 : settings.temperature,
+    maxTokens: typeof settings.maxTokens === 'string' ? Number.parseInt(settings.maxTokens) || 2048 : settings.maxTokens,
+    topP: typeof settings.topP === 'string' ? Number.parseFloat(settings.topP) || 0.9 : settings.topP,
+  };
+};
 
 export function GeminiConfig() {
   const [config, setConfig] = useState<GeminiConfigData>({
@@ -30,6 +49,7 @@ export function GeminiConfig() {
     maxTokens: 2048,
     topP: 0.9,
     topK: 40,
+    customPrompt: "",
   });
 
   const [showApiKey, setShowApiKey] = useState(false);
@@ -50,9 +70,9 @@ export function GeminiConfig() {
     }
 
     try {
-      const { name, ...settings } = config;
+      const settings = prepareSettingsForApi(config);
       await createConfiguration.mutateAsync({
-        name,
+        name: config.name,
         provider: "gemini",
         settings,
         isActive: true,
@@ -69,11 +89,71 @@ export function GeminiConfig() {
         maxTokens: 2048,
         topP: 0.9,
         topK: 40,
+        customPrompt: "",
       });
     } catch (error) {
       toast.error("Failed to save configuration");
     }
   };
+
+  // Model params handlers
+  const handleTemperatureChange = (value: string) => {
+    setConfig((prev) => ({ ...prev, temperature: value }));
+  };
+
+  const handleTemperatureBlur = (value: string) => {
+    if (value === "") {
+      setConfig((prev) => ({ ...prev, temperature: 0.7 }));
+    } else {
+      const num = Number.parseFloat(value);
+      if (Number.isNaN(num) || num < 0 || num > 2) {
+        setConfig((prev) => ({ ...prev, temperature: 0.7 }));
+      } else {
+        setConfig((prev) => ({ ...prev, temperature: num }));
+      }
+    }
+  };
+
+  const handleMaxTokensChange = (value: string) => {
+    setConfig((prev) => ({ ...prev, maxTokens: value }));
+  };
+
+  const handleMaxTokensBlur = (value: string) => {
+    if (value === "") {
+      setConfig((prev) => ({ ...prev, maxTokens: 2048 }));
+    } else {
+      const num = Number.parseInt(value);
+      if (Number.isNaN(num) || num < 1 || num > 8192) {
+        setConfig((prev) => ({ ...prev, maxTokens: 2048 }));
+      } else {
+        setConfig((prev) => ({ ...prev, maxTokens: num }));
+      }
+    }
+  };
+
+  const handleTopPChange = (value: string) => {
+    setConfig((prev) => ({ ...prev, topP: value }));
+  };
+
+  const handleTopPBlur = (value: string) => {
+    if (value === "") {
+      setConfig((prev) => ({ ...prev, topP: 0.9 }));
+    } else {
+      const num = Number.parseFloat(value);
+      if (Number.isNaN(num) || num < 0 || num > 1) {
+        setConfig((prev) => ({ ...prev, topP: 0.9 }));
+      } else {
+        setConfig((prev) => ({ ...prev, topP: num }));
+      }
+    }
+  };
+
+  // Dummy handlers for unused parameters (Gemini doesn't use these)
+  const handlePresencePenaltyChange = () => {};
+  const handlePresencePenaltyBlur = () => {};
+  const handleFrequencyPenaltyChange = () => {};
+  const handleFrequencyPenaltyBlur = () => {};
+  const handleStreamResponseChange = () => {};
 
   const handleTest = async () => {
     if (!config.apiKey.trim()) {
@@ -82,7 +162,7 @@ export function GeminiConfig() {
     }
 
     try {
-      const { name, ...settings } = config;
+      const settings = prepareSettingsForApi(config);
       const result = await testConnection.mutateAsync({
         provider: "gemini",
         settings,
@@ -178,79 +258,32 @@ export function GeminiConfig() {
       </div>
 
       {/* Model Parameters */}
+      <ModelParams
+        temperature={config.temperature}
+        maxTokens={config.maxTokens}
+        topP={config.topP}
+        presencePenalty={0}
+        frequencyPenalty={0}
+        streamResponse={false}
+        onTemperatureChange={handleTemperatureChange}
+        onTemperatureBlur={handleTemperatureBlur}
+        onMaxTokensChange={handleMaxTokensChange}
+        onMaxTokensBlur={handleMaxTokensBlur}
+        onTopPChange={handleTopPChange}
+        onTopPBlur={handleTopPBlur}
+        onPresencePenaltyChange={handlePresencePenaltyChange}
+        onPresencePenaltyBlur={handlePresencePenaltyBlur}
+        onFrequencyPenaltyChange={handleFrequencyPenaltyChange}
+        onFrequencyPenaltyBlur={handleFrequencyPenaltyBlur}
+        onStreamResponseChange={handleStreamResponseChange}
+      />
+
+      {/* Gemini-specific TopK parameter */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Model Parameters</CardTitle>
+          <CardTitle className="text-lg">Gemini-Specific Parameters</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Temperature</Label>
-              <span className="text-sm text-muted-foreground">
-                {config.temperature}
-              </span>
-            </div>
-            <Slider
-              value={[config.temperature]}
-              onValueChange={([value]) =>
-                setConfig((prev) => ({ ...prev, temperature: value }))
-              }
-              max={2}
-              min={0}
-              step={0.1}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Controls randomness. Lower values make responses more focused and
-              deterministic.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Max Tokens</Label>
-              <span className="text-sm text-muted-foreground">
-                {config.maxTokens}
-              </span>
-            </div>
-            <Slider
-              value={[config.maxTokens]}
-              onValueChange={([value]) =>
-                setConfig((prev) => ({ ...prev, maxTokens: value }))
-              }
-              max={8192}
-              min={1}
-              step={1}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Maximum number of tokens to generate in the response.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Top-p</Label>
-              <span className="text-sm text-muted-foreground">
-                {config.topP}
-              </span>
-            </div>
-            <Slider
-              value={[config.topP]}
-              onValueChange={([value]) =>
-                setConfig((prev) => ({ ...prev, topP: value }))
-              }
-              max={1}
-              min={0}
-              step={0.1}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Nucleus sampling. Only tokens with cumulative probability up to
-              this value are considered.
-            </p>
-          </div>
-
+        <CardContent>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Top-k</Label>
@@ -275,6 +308,12 @@ export function GeminiConfig() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Custom System Prompt */}
+      <CustomSystemPrompt
+        value={config.customPrompt || ""}
+        onChange={(value) => setConfig((prev) => ({ ...prev, customPrompt: value }))}
+      />
 
       {/* Actions */}
       <div className="flex justify-between pt-4">
