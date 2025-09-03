@@ -73,6 +73,11 @@ function convertMessagesForGemini(
       mimeType: string;
       data: Buffer;
     }>;
+  }>,
+  files?: Array<{
+    name: string;
+    type: string;
+    data: string; // base64 encoded
   }>
 ) {
   // Create a map of message content to message IDs for attachment lookup
@@ -115,6 +120,51 @@ function convertMessagesForGemini(
       }
 
       messageAttachmentMap.set(messageKey, allAttachments);
+    }
+  }
+
+  // Handle stateless files from direct API calls
+  if (files && files.length > 0) {
+    // Find the last user message and attach all files to it
+    let lastUserMessageIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserMessageIndex >= 0) {
+      const lastUserMessage = messages[lastUserMessageIndex];
+      const messageKey = typeof lastUserMessage.content === "string" 
+        ? lastUserMessage.content 
+        : JSON.stringify(lastUserMessage.content);
+      
+      // Convert base64 files to Buffer format
+      const convertedFiles: Array<{
+        id: string;
+        filename: string;
+        mimeType: string;
+        data: Buffer;
+      }> = [];
+
+      for (const file of files) {
+        // Extract base64 data (remove data URL prefix if present)
+        const base64Data = file.data.includes(",") 
+          ? file.data.split(",")[1] 
+          : file.data;
+        
+        convertedFiles.push({
+          id: `stateless_${Date.now()}_${Math.random()}`,
+          filename: file.name,
+          mimeType: file.type,
+          data: Buffer.from(base64Data, "base64"),
+        });
+      }
+
+      // Add to existing attachments or create new entry
+      const existingAttachments = messageAttachmentMap.get(messageKey) || [];
+      messageAttachmentMap.set(messageKey, [...existingAttachments, ...convertedFiles]);
     }
   }
 
@@ -387,7 +437,7 @@ async function getAIConfig(
 export async function generateChatResponse(
   request: ChatRequest
 ): Promise<ChatResponse> {
-  const { messages, userId, configurationId, systemPromptId, attachmentFiles } = request;
+  const { messages, userId, configurationId, systemPromptId, attachmentFiles, files } = request;
 
   try {
     // Get AI configuration from database
@@ -411,7 +461,7 @@ export async function generateChatResponse(
       });
 
       // Convert messages specifically for Gemini format
-      const convertedMessages = convertMessagesForGemini(messages, attachmentFiles);
+      const convertedMessages = convertMessagesForGemini(messages, attachmentFiles, files);
 
       // Handle structured output prompts vs regular prompts
       if (systemPrompt && systemPrompt.category === "Structured Output" && systemPrompt.jsonSchema) {
@@ -590,7 +640,7 @@ export async function generateChatResponse(
 }
 
 export async function streamChatResponse(request: ChatRequest) {
-  const { messages, userId, configurationId, systemPromptId, attachmentFiles } = request;
+  const { messages, userId, configurationId, systemPromptId, attachmentFiles, files } = request;
 
   try {
     // Get AI configuration from database
@@ -613,7 +663,7 @@ export async function streamChatResponse(request: ChatRequest) {
       });
 
       // Convert messages specifically for Gemini format
-      const convertedMessages = convertMessagesForGemini(messages, attachmentFiles);
+      const convertedMessages = convertMessagesForGemini(messages, attachmentFiles, files);
 
       // Note: For streaming, we only support text generation, not structured output
       result = streamText({
