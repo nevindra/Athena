@@ -1,16 +1,20 @@
 import { createOllama } from "ollama-ai-provider-v2";
-import { generateText, streamText } from "ai";
+import { generateText, streamText, generateObject } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import OpenAI from "openai";
 import { db } from "../db";
-import { aiConfigurations } from "../db/schema";
+import { aiConfigurations, systemPrompts } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { encryptionService } from "./encryptionService";
+import { z } from "zod";
 import type {
   OllamaConfigSettings,
   HttpApiConfigSettings,
   GeminiConfigSettings,
   AIProvider,
+  SystemPrompt,
+  JsonField,
+  SystemPromptCategory,
 } from "@athena/shared";
 
 export interface ChatMessage {
@@ -29,6 +33,7 @@ export interface ChatRequest {
   userId: string;
   configurationId?: string;
   sessionId?: string;
+  systemPromptId?: string;
   files?: Array<{
     name: string;
     type: string;
@@ -175,6 +180,121 @@ function convertMessagesForGemini(
   });
 }
 
+// Helper function to convert JsonField array to Zod schema
+function buildZodSchema(fields: JsonField[]): z.ZodObject<Record<string, any>> {
+  const shape: Record<string, z.ZodTypeAny> = {};
+
+  for (const field of fields) {
+    let zodType: z.ZodTypeAny;
+
+    switch (field.type) {
+      case "string":
+        zodType = z.string();
+        if (field.description) {
+          zodType = zodType.describe(field.description);
+        }
+        break;
+      case "number":
+        zodType = z.number();
+        if (field.description) {
+          zodType = zodType.describe(field.description);
+        }
+        break;
+      case "boolean":
+        zodType = z.boolean();
+        if (field.description) {
+          zodType = zodType.describe(field.description);
+        }
+        break;
+      case "object":
+        if (field.children && field.children.length > 0) {
+          zodType = buildZodSchema(field.children);
+        } else {
+          zodType = z.object({});
+        }
+        if (field.description) {
+          zodType = zodType.describe(field.description);
+        }
+        break;
+      case "array":
+        if (field.arrayItemType) {
+          switch (field.arrayItemType) {
+            case "string":
+              zodType = z.array(z.string());
+              break;
+            case "number":
+              zodType = z.array(z.number());
+              break;
+            case "boolean":
+              zodType = z.array(z.boolean());
+              break;
+            case "object":
+              if (field.children && field.children.length > 0) {
+                zodType = z.array(buildZodSchema(field.children));
+              } else {
+                zodType = z.array(z.object({}));
+              }
+              break;
+            default:
+              zodType = z.array(z.string()); // Default to string array for safety
+          }
+        } else {
+          zodType = z.array(z.string()); // Default to string array for safety
+        }
+        if (field.description) {
+          zodType = zodType.describe(field.description);
+        }
+        break;
+      default:
+        console.warn(`Unknown field type: ${field.type}, defaulting to string`);
+        zodType = z.string(); // Default to string for unknown types
+    }
+
+    if (field.required) {
+      shape[field.name] = zodType;
+    } else {
+      shape[field.name] = zodType.optional();
+    }
+  }
+
+  const schema = z.object(shape);
+  return schema;
+}
+
+async function getSystemPrompt(
+  userId: string,
+  systemPromptId: string
+): Promise<SystemPrompt | null> {
+  const result = await db
+    .select()
+    .from(systemPrompts)
+    .where(
+      and(
+        eq(systemPrompts.id, systemPromptId),
+        eq(systemPrompts.userId, userId)
+      )
+    )
+    .limit(1);
+
+  if (!result.length) {
+    return null;
+  }
+
+  const prompt = result[0];
+  return {
+    id: prompt.id,
+    userId: prompt.userId,
+    title: prompt.title,
+    description: prompt.description,
+    category: prompt.category,
+    content: prompt.content,
+    jsonSchema: prompt.jsonSchema || undefined,
+    jsonDescription: prompt.jsonDescription || undefined,
+    createdAt: prompt.createdAt,
+    updatedAt: prompt.updatedAt,
+  };
+}
+
 async function getAIConfig(
   userId: string,
   configurationId?: string
@@ -267,11 +387,18 @@ async function getAIConfig(
 export async function generateChatResponse(
   request: ChatRequest
 ): Promise<ChatResponse> {
-  const { messages, userId, configurationId, files, attachmentFiles } = request;
+  const { messages, userId, configurationId, systemPromptId, attachmentFiles } = request;
 
   try {
     // Get AI configuration from database
     const { provider, settings } = await getAIConfig(userId, configurationId);
+
+    // Get system prompt if provided
+    let systemPrompt: SystemPrompt | null = null;
+
+    if (systemPromptId) {
+      systemPrompt = await getSystemPrompt(userId, systemPromptId);
+    }
 
     let result: { text: string; finishReason?: string; reasoning?: any; usage?: any };
 
@@ -286,25 +413,84 @@ export async function generateChatResponse(
       // Convert messages specifically for Gemini format
       const convertedMessages = convertMessagesForGemini(messages, attachmentFiles);
 
-      const { text, reasoning, finishReason, usage } = await generateText({
-        model: googleProvider(geminiSettings.model),
-        messages: convertedMessages,
-        temperature: geminiSettings.temperature,
-        topP: geminiSettings.topP,
-        providerOptions: {
-          google: {
-            thinkingConfig: {
-              thinkingBudget: -1, // Number of thinking tokens (0 to disable)
-              includeThoughts: true, // Get thought summaries in response
+      // Handle structured output prompts vs regular prompts
+      if (systemPrompt && systemPrompt.category === "Structured Output" && systemPrompt.jsonSchema) {
+        // Use generateObject for structured outputs
+        const zodSchema = buildZodSchema(systemPrompt.jsonSchema);
+        
+        // Enhanced system prompt for strict schema compliance
+        const enhancedSystemPrompt = `${systemPrompt.content}
+
+          CRITICAL: You MUST respond with valid JSON that matches the exact schema above. 
+          - Include ONLY the fields defined in the schema
+          - Use the exact field names specified
+          - Match the exact data types specified  
+          - Do NOT add any additional fields, explanations, or context
+          - Do NOT provide analysis beyond what's requested
+          - Your response must be parseable as JSON with only the specified structure
+
+          Schema fields: ${systemPrompt.jsonSchema.map(field => `${field.name} (${field.type})${field.required ? ' *required*' : ''}`).join(', ')}`;
+        
+        const { object, reasoning, finishReason, usage } = await generateObject({
+          model: googleProvider(geminiSettings.model),
+          messages: convertedMessages,
+          system: enhancedSystemPrompt,
+          schema: zodSchema,
+          temperature: 0.1, // Lower temperature for more consistent structured output
+          topP: geminiSettings.topP,
+          providerOptions: {
+            google: {
+              structuredOutputs: true, // Ensure structured outputs are enabled
+              thinkingConfig: {
+                thinkingBudget: 1024, // Reduce thinking to focus on schema compliance
+                includeThoughts: false, // Disable thoughts to avoid confusion
+              },
             },
           },
-        },
-      });
+        });
+        
+        // Validate the generated object against expected fields
+        const expectedFields = systemPrompt.jsonSchema.filter(f => f.required).map(f => f.name);
+        const actualFields = Object.keys(object);
+        const missingFields = expectedFields.filter(field => !(field in object));
+        const extraFields = actualFields.filter(field => !systemPrompt.jsonSchema.some(f => f.name === field));
+        
+        if (missingFields.length > 0) {
+          console.warn("Missing required fields:", missingFields);
+        }
+        if (extraFields.length > 0) {
+          console.warn("Extra fields not in schema:", extraFields);
+        }
+        
+        // Convert object to formatted JSON string - use compact format for simple objects
+        const isSimpleObject = Object.keys(object).length <= 3 && 
+          Object.values(object).every(v => typeof v !== 'object' || v === null);
+        
+        const text = isSimpleObject ? JSON.stringify(object) : JSON.stringify(object, null, 2);
+        result = { text, reasoning, finishReason, usage };
+      } else {
+        // Use generateText for regular prompts or topic-specific prompts
+        const { text, reasoning, finishReason, usage } = await generateText({
+          model: googleProvider(geminiSettings.model),
+          messages: convertedMessages,
+          system: systemPrompt?.content, // Add system prompt as system instruction
+          temperature: geminiSettings.temperature,
+          topP: geminiSettings.topP,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                thinkingBudget: -1, // Number of thinking tokens (0 to disable)
+                includeThoughts: true, // Get thought summaries in response
+              },
+            },
+          },
+        });
 
-      // Debug: Log the reasoning to see what we're getting
-      console.log("Gemini reasoning:", reasoning);
-      
-      result = { text, reasoning, finishReason, usage };
+        result = { text, reasoning, finishReason, usage };
+      }
+
+      // Debug: Log the result
+      console.log("Gemini result:", result);
     } else if (provider === "ollama") {
       const ollamaSettings = settings as OllamaConfigSettings;
       const ollama = createOllama({
@@ -325,6 +511,7 @@ export async function generateChatResponse(
       result = await generateText({
         model: ollama(ollamaSettings.model),
         messages: textMessages,
+        system: systemPrompt?.content, // Add system prompt as system instruction
         temperature: ollamaSettings.temperature,
       });
     } else if (provider === "http-api") {
@@ -337,7 +524,7 @@ export async function generateChatResponse(
       });
 
       // For HTTP API, convert to text-only
-      const textMessages = messages.map((msg) => ({
+      let textMessages = messages.map((msg) => ({
         role: msg.role as "system" | "user" | "assistant",
         content: Array.isArray(msg.content)
           ? msg.content
@@ -346,6 +533,14 @@ export async function generateChatResponse(
               .join(" ")
           : msg.content,
       }));
+
+      // Add system prompt as system message if provided
+      if (systemPrompt?.content) {
+        textMessages = [
+          { role: "system", content: systemPrompt.content },
+          ...textMessages
+        ];
+      }
 
       const response = await openai.chat.completions.create({
         model: httpSettings.model,
@@ -395,11 +590,17 @@ export async function generateChatResponse(
 }
 
 export async function streamChatResponse(request: ChatRequest) {
-  const { messages, userId, configurationId, attachmentFiles } = request;
+  const { messages, userId, configurationId, systemPromptId, attachmentFiles } = request;
 
   try {
     // Get AI configuration from database
     const { provider, settings } = await getAIConfig(userId, configurationId);
+
+    // Get system prompt if provided
+    let systemPrompt: SystemPrompt | null = null;
+    if (systemPromptId) {
+      systemPrompt = await getSystemPrompt(userId, systemPromptId);
+    }
 
     let result: { textStream: any };
 
@@ -414,9 +615,11 @@ export async function streamChatResponse(request: ChatRequest) {
       // Convert messages specifically for Gemini format
       const convertedMessages = convertMessagesForGemini(messages, attachmentFiles);
 
+      // Note: For streaming, we only support text generation, not structured output
       result = streamText({
         model: googleProvider(geminiSettings.model),
         messages: convertedMessages,
+        system: systemPrompt?.content, // Add system prompt as system instruction
         temperature: geminiSettings.temperature,
         topP: geminiSettings.topP,
         providerOptions: {
@@ -448,6 +651,7 @@ export async function streamChatResponse(request: ChatRequest) {
       result = streamText({
         model: ollama(ollamaSettings.model),
         messages: textMessages,
+        system: systemPrompt?.content, // Add system prompt as system instruction
         temperature: ollamaSettings.temperature,
       });
     } else if (provider === "http-api") {
@@ -460,7 +664,7 @@ export async function streamChatResponse(request: ChatRequest) {
       });
 
       // For HTTP API, convert to text-only
-      const textMessages = messages.map((msg) => ({
+      let textMessages = messages.map((msg) => ({
         role: msg.role as "system" | "user" | "assistant",
         content: Array.isArray(msg.content)
           ? msg.content
@@ -469,6 +673,14 @@ export async function streamChatResponse(request: ChatRequest) {
               .join(" ")
           : msg.content,
       }));
+
+      // Add system prompt as system message if provided
+      if (systemPrompt?.content) {
+        textMessages = [
+          { role: "system", content: systemPrompt.content },
+          ...textMessages
+        ];
+      }
 
       const stream = await openai.chat.completions.create({
         model: httpSettings.model,

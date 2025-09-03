@@ -34,12 +34,43 @@ function parseMessageContent(content: string) {
   if (thinkMatch) {
     const thinkingContent = thinkMatch[1].trim();
     let actualResponse = content.replace(/<think>[\s\S]*?<\/think>/, "").trim();
+    
+    // Check if actualResponse is JSON
+    const { isJson, jsonData } = tryParseJson(actualResponse);
+    if (isJson) {
+      return { thinkingContent, actualResponse: null, jsonData };
+    }
+    
     actualResponse = preprocessMarkdown(actualResponse);
-    return { thinkingContent, actualResponse };
+    return { thinkingContent, actualResponse, jsonData: null };
+  }
+  
+  // Check if content is JSON
+  const { isJson, jsonData } = tryParseJson(content);
+  if (isJson) {
+    return { thinkingContent: null, actualResponse: null, jsonData };
   }
   
   const processedContent = preprocessMarkdown(content);
-  return { thinkingContent: null, actualResponse: processedContent };
+  return { thinkingContent: null, actualResponse: processedContent, jsonData: null };
+}
+
+function tryParseJson(text: string): { isJson: boolean; jsonData: any } {
+  try {
+    // Remove leading/trailing whitespace
+    const trimmed = text.trim();
+    
+    // Check if it looks like JSON (starts with { or [)
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+        (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      const parsed = JSON.parse(trimmed);
+      return { isJson: true, jsonData: parsed };
+    }
+    
+    return { isJson: false, jsonData: null };
+  } catch {
+    return { isJson: false, jsonData: null };
+  }
 }
 
 function preprocessMarkdown(text: string): string {
@@ -92,8 +123,29 @@ function preprocessMarkdown(text: string): string {
   return processedLines.join('\n').trim();
 }
 
+function JsonDisplay({ data }: { data: any }) {
+  const jsonString = JSON.stringify(data, null, 2);
+  
+  return (
+    <div className="bg-muted/30 rounded-lg p-3 my-2 border border-border/50">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-muted-foreground">Structured Output</span>
+        <button 
+          onClick={() => navigator.clipboard.writeText(jsonString)}
+          className="text-xs px-2 py-1 bg-background hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Copy JSON
+        </button>
+      </div>
+      <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+        <code>{jsonString}</code>
+      </pre>
+    </div>
+  );
+}
+
 export function Message({ content, role, timestamp, attachments }: MessageProps) {
-  const { thinkingContent, actualResponse } = parseMessageContent(content);
+  const { thinkingContent, actualResponse, jsonData } = parseMessageContent(content);
   const isImage = isImageFile(content);
 
   return (
@@ -147,8 +199,15 @@ export function Message({ content, role, timestamp, attachments }: MessageProps)
           </div>
         )}
         
+        {/* Render JSON data if available */}
+        {jsonData && (
+          <div className={`${thinkingContent || (attachments && attachments.length > 0) ? "mt-3" : ""}`}>
+            <JsonDisplay data={jsonData} />
+          </div>
+        )}
+        
         {actualResponse && !isImage && (
-          <div className={`text-sm leading-relaxed ${thinkingContent || (attachments && attachments.length > 0) ? "mt-3" : ""}`}>
+          <div className={`text-sm leading-relaxed ${thinkingContent || (attachments && attachments.length > 0) || jsonData ? "mt-3" : ""}`}>
             <ReactMarkdown
               remarkPlugins={[remarkMath]}
               rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}

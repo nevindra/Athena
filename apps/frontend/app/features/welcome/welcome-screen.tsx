@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Card } from "~/components/ui/card";
 import { EnhancedChatInput } from "./enhanced-chat-input";
 import { useCreateSession } from "~/hooks/use-sessions";
-import type { AIConfiguration } from "@athena/shared";
+import type { AIConfiguration, SystemPrompt } from "@athena/shared";
 
 const EXAMPLE_PROMPTS = [
   {
@@ -74,6 +74,10 @@ export function WelcomeScreen() {
     navigate("/models");
   };
 
+  const handleSystemPromptSettingsClick = () => {
+    navigate("/system-prompts");
+  };
+
   const handleExampleClick = (prompt: string) => {
     handleSubmit(prompt);
   };
@@ -129,7 +133,12 @@ export function WelcomeScreen() {
           <EnhancedChatInput
             onSubmit={handleSubmit}
             onModelChange={handleModelChange}
+            onSystemPromptChange={(promptId, prompt) => {
+              // Handle system prompt selection - could be passed to session creation
+              console.log("Selected system prompt:", prompt);
+            }}
             onSettingsClick={handleSettingsClick}
+            onSystemPromptSettingsClick={handleSystemPromptSettingsClick}
             placeholder="Message..."
             disabled={isLoading}
             autoFocus

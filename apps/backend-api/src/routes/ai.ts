@@ -25,6 +25,12 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
       userId: t.String(),
       configurationId: t.Optional(t.String()),
       sessionId: t.Optional(t.String()),
+      systemPromptId: t.Optional(t.String()),
+      files: t.Optional(t.Array(t.Object({
+        name: t.String(),
+        type: t.String(),
+        data: t.String(),
+      }))),
     }),
     response: t.Object({
       success: t.Boolean(),
@@ -70,6 +76,12 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
       userId: t.String(),
       configurationId: t.Optional(t.String()),
       sessionId: t.Optional(t.String()),
+      systemPromptId: t.Optional(t.String()),
+      files: t.Optional(t.Array(t.Object({
+        name: t.String(),
+        type: t.String(),
+        data: t.String(),
+      }))),
     }),
   })
   

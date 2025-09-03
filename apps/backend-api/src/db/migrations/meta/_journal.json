@@ -15,6 +15,13 @@
       "when": 1756550327127,
       "tag": "0001_magenta_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756816936800,
+      "tag": "0002_organic_turbo",
+      "breakpoints": true
     }
   ]
 }

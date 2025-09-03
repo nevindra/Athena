@@ -32,7 +32,6 @@ export const httpApiConfigSettingsSchema = z.object({
   frequencyPenalty: z.number().min(-2).max(2),
   headers: z.record(z.string()).default({}),
   authType: z.enum(["bearer", "api-key", "custom", "none"]),
-  customPrompt: z.string().optional(),
   streamResponse: z.boolean().default(true),
 });
 

@@ -46,6 +46,7 @@ interface ChatRequest {
   userId: string;
   configurationId?: string;
   sessionId?: string;
+  systemPromptId?: string;
   files?: Array<{
     name: string;
     type: string;
@@ -167,6 +168,7 @@ export function useChatCompletion() {
       userId: string;
       configurationId?: string;
       sessionId?: string;
+      systemPromptId?: string;
       files?: File[];
     }) => {
       let request: ChatRequest = {
@@ -174,6 +176,7 @@ export function useChatCompletion() {
         userId: params.userId,
         configurationId: params.configurationId,
         sessionId: params.sessionId,
+        systemPromptId: params.systemPromptId,
       };
 
       // Convert files to base64 if provided

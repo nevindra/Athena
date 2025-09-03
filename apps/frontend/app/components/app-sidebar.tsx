@@ -7,9 +7,9 @@ import {
 } from "lucide-react";
 import type * as React from "react";
 
-import { NavMain } from "~/components/nav-main";
-import { NavChatHistory } from "~/components/nav-projects";
-import { NavUser } from "~/components/nav-user";
+import { NavMain } from "@/components/navigation/nav-main";
+import { NavChatHistory } from "@/components/navigation/nav-projects";
+import { NavUser } from "@/components/navigation/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -31,9 +31,19 @@ const data = {
   },
   navMain: [
     {
-      title: "Models Hub",
-      url: "/models",
+      title: "Configuration",
+      url: "#",
       icon: Bot,
+      items: [
+        {
+          title: "Model Configuration",
+          url: "/models",
+        },
+        {
+          title: "System Prompt",
+          url: "/system-prompts",
+        },
+      ],
     },
     {
       title: "Knowledge Base",

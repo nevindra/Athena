@@ -2,7 +2,7 @@ import { pgTable, text, timestamp, boolean, json, index, vector } from "drizzle-
 import { relations } from "drizzle-orm";
 import { ulid } from "ulid";
 import { createId } from "@paralleldrive/cuid2";
-import type { AIProvider } from "@athena/shared";
+import type { AIProvider, JsonField, SystemPromptCategory } from "@athena/shared";
 
 // Message attachment type
 export type MessageAttachment = {
@@ -70,10 +70,29 @@ export const chatMessages = pgTable("chat_messages", {
   embeddingIdx: index("chat_messages_embedding_idx").using("hnsw", table.embedding.op("vector_cosine_ops")),
 }));
 
+// System Prompts table - using ULID
+export const systemPrompts = pgTable("system_prompts", {
+  id: text("id").primaryKey().$defaultFn(generateUlid),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  category: text("category").$type<SystemPromptCategory>().notNull(),
+  content: text("content").notNull(),
+  jsonSchema: json("json_schema").$type<JsonField[]>(),
+  jsonDescription: text("json_description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("system_prompts_user_id_idx").on(table.userId),
+  categoryIdx: index("system_prompts_category_idx").on(table.category),
+  titleIdx: index("system_prompts_title_idx").on(table.title),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   aiConfigurations: many(aiConfigurations),
   chatSessions: many(chatSessions),
+  systemPrompts: many(systemPrompts),
 }));
 
 export const aiConfigurationsRelations = relations(aiConfigurations, ({ one, many }) => ({
@@ -103,6 +122,13 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   }),
 }));
 
+export const systemPromptsRelations = relations(systemPrompts, ({ one }) => ({
+  user: one(users, {
+    fields: [systemPrompts.userId],
+    references: [users.id],
+  }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type AIConfigurationDB = typeof aiConfigurations.$inferSelect;
@@ -111,3 +137,5 @@ export type ChatSession = typeof chatSessions.$inferSelect;
 export type NewChatSession = typeof chatSessions.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type SystemPromptDB = typeof systemPrompts.$inferSelect;
+export type NewSystemPrompt = typeof systemPrompts.$inferInsert;

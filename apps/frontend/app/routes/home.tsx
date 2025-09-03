@@ -1,4 +1,4 @@
-import { AppHeader } from "~/components/app-header";
+import { AppHeader } from "@/components/navigation/app-header";
 import { WelcomeScreen } from "~/features/welcome";
 import type { Route } from "./+types/home";
 

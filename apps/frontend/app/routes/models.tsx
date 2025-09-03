@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AppHeader } from "~/components/app-header";
+import { AppHeader } from "@/components/navigation/app-header";
 import { ProviderConfig } from "@/features/models/provider-config";
 import { ProviderSelection } from "@/features/models/provider-selection";
 import { ConfigurationList } from "@/features/models/configuration-list";

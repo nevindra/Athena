@@ -34,11 +34,19 @@ export const queryClient = new QueryClient({
 
 // Query keys factory for consistent key management
 export const queryKeys = {
-  // Base keys
+  // Base keys for configurations
   configurations: ["configurations"] as const,
   configuration: (id: string) => ["configurations", id] as const,
   
-  // Specific query keys
+  // Base keys for system prompts
+  systemPrompts: ["systemPrompts"] as const,
+  systemPrompt: (id: string) => ["systemPrompts", id] as const,
+  
+  // Configuration query keys
   all: () => [...queryKeys.configurations] as const,
   byId: (id: string) => [...queryKeys.configuration(id)] as const,
+  
+  // System prompt query keys
+  allSystemPrompts: () => [...queryKeys.systemPrompts] as const,
+  systemPromptById: (id: string) => [...queryKeys.systemPrompt(id)] as const,
 } as const;

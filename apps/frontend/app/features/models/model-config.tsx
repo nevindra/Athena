@@ -33,9 +33,7 @@ import {
 } from "~/hooks/use-configurations";
 import type { AIConfiguration } from "@athena/shared";
 import { toast } from "sonner";
-import { QuickSetup } from "~/components/models/quick-setup";
 import { ModelParams } from "~/components/models/model-params";
-import { CustomSystemPrompt } from "~/components/models/custom-system-prompt";
 import {
   type ProviderType,
   type FieldDefinition,
@@ -247,35 +245,6 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
     }
   };
 
-  // Model params handlers (for Gemini and HTTP API)
-  const getModelParamsHandlers = () => {
-    const createHandler = (key: string, defaultValue: number, min: number, max: number) => ({
-      onChange: (value: string) => handleFieldChange(key, value),
-      onBlur: (value: string) => {
-        if (value === "") {
-          handleFieldChange(key, defaultValue);
-        } else {
-          const num = key.includes("Token") ? Number.parseInt(value) : Number.parseFloat(value);
-          if (Number.isNaN(num) || num < min || num > max) {
-            handleFieldChange(key, defaultValue);
-          } else {
-            handleFieldChange(key, num);
-          }
-        }
-      },
-    });
-
-    return {
-      temperature: createHandler("temperature", 0.7, 0, 2),
-      maxTokens: createHandler("maxTokens", 2048, 1, 8192),
-      topP: createHandler("topP", provider === "gemini" ? 0.9 : 1.0, 0, 1),
-      presencePenalty: createHandler("presencePenalty", 0, -2, 2),
-      frequencyPenalty: createHandler("frequencyPenalty", 0, -2, 2),
-      streamResponse: {
-        onChange: (value: boolean) => handleFieldChange("streamResponse", value),
-      },
-    };
-  };
 
   // Render individual field
   const renderField = (field: FieldDefinition) => {
@@ -543,43 +512,6 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
   const renderSpecialSections = () => {
     return providerDef.specialSections.map((section, index) => {
       switch (section.type) {
-        case "quick-setup":
-          return <QuickSetup key={index} onSelectEndpoint={selectCommonEndpoint} />;
-
-        case "model-params":
-          const handlers = getModelParamsHandlers();
-          return (
-            <ModelParams
-              key={index}
-              temperature={config.temperature}
-              maxTokens={config.maxTokens}
-              topP={config.topP}
-              presencePenalty={config.presencePenalty || 0}
-              frequencyPenalty={config.frequencyPenalty || 0}
-              streamResponse={config.streamResponse !== undefined ? config.streamResponse : true}
-              onTemperatureChange={handlers.temperature.onChange}
-              onTemperatureBlur={handlers.temperature.onBlur}
-              onMaxTokensChange={handlers.maxTokens.onChange}
-              onMaxTokensBlur={handlers.maxTokens.onBlur}
-              onTopPChange={handlers.topP.onChange}
-              onTopPBlur={handlers.topP.onBlur}
-              onPresencePenaltyChange={handlers.presencePenalty.onChange}
-              onPresencePenaltyBlur={handlers.presencePenalty.onBlur}
-              onFrequencyPenaltyChange={handlers.frequencyPenalty.onChange}
-              onFrequencyPenaltyBlur={handlers.frequencyPenalty.onBlur}
-              onStreamResponseChange={handlers.streamResponse.onChange}
-            />
-          );
-
-        case "custom-prompt":
-          return (
-            <CustomSystemPrompt
-              key={index}
-              value={config.customPrompt || ""}
-              onChange={(value) => handleFieldChange("customPrompt", value)}
-            />
-          );
-
         case "installation-guide":
           return (
             <Card key={index} className="border-blue-200 bg-blue-50/50">
@@ -635,8 +567,17 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
     <div className="space-y-6">
       {/* Basic Configuration Fields */}
       <div className="space-y-4">
-        {providerDef.fields.map(renderField)}
+        {providerDef.fields
+          .filter(field => field.type !== "slider" && !(field.type === "select" && field.key === "streamResponse"))
+          .map(renderField)}
       </div>
+
+      {/* Model Parameters */}
+      <ModelParams
+        provider={provider}
+        values={config}
+        onChange={handleFieldChange}
+      />
 
       {/* Special Sections */}
       {renderSpecialSections()}

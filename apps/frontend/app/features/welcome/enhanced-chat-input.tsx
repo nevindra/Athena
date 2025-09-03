@@ -9,37 +9,95 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Paperclip, Send, X } from "lucide-react";
+import { Paperclip, X, ChevronDown } from "lucide-react";
 import { useConfigurations } from "~/hooks/use-configurations";
-import type { AIConfiguration } from "@athena/shared";
+import { useSystemPrompts } from "~/hooks/use-system-prompts";
+import { useModelStore } from "~/stores/model-store";
+import { useSystemPromptStore } from "~/stores/system-prompt-store";
+import type { AIConfiguration, SystemPrompt } from "@athena/shared";
 
 interface EnhancedChatInputProps {
   onSubmit: (message: string, files?: File[]) => void;
   onModelChange?: (configId: string, config: AIConfiguration) => void;
+  onSystemPromptChange?: (promptId: string | null, prompt: SystemPrompt | null) => void;
   onSettingsClick?: () => void;
+  onSystemPromptSettingsClick?: () => void;
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
   selectedModel?: string;
+  onScrollToBottom?: () => void;
+  showScrollButton?: boolean;
 }
 
 export function EnhancedChatInput({
   onSubmit,
   onModelChange,
+  onSystemPromptChange,
   onSettingsClick,
+  onSystemPromptSettingsClick,
   placeholder = "Type your message here...",
   disabled = false,
   autoFocus = false,
   selectedModel,
+  onScrollToBottom,
+  showScrollButton = false,
 }: EnhancedChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedConfigId, setSelectedConfigId] = useState<string>(selectedModel || "");
   const [isCompact, setIsCompact] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   const { data: configurations, isLoading } = useConfigurations();
+  const { selectedModelId, setSelectedModel: setStoredModel } = useModelStore();
+  
+  const { data: systemPrompts } = useSystemPrompts();
+  const { selectedSystemPromptId, setSelectedSystemPrompt: setStoredSystemPrompt } = useSystemPromptStore();
+
+  // Auto-select first available model or use persisted selection
+  useEffect(() => {
+    if (!configurations || configurations.length === 0) return;
+
+    // If we have a persisted model ID, check if it still exists in configurations
+    if (selectedModelId) {
+      const persistedConfig = configurations.find(
+        (config) => config.id === selectedModelId
+      );
+      if (persistedConfig) {
+        // Persisted model still exists, use it
+        onModelChange?.(selectedModelId, persistedConfig);
+        return;
+      }
+    }
+
+    // No valid persisted model, select the first available one
+    const firstConfig = configurations[0];
+    if (firstConfig) {
+      setStoredModel(firstConfig.id, firstConfig);
+      onModelChange?.(firstConfig.id, firstConfig);
+    }
+  }, [configurations, selectedModelId, setStoredModel, onModelChange]);
+
+  // Use persisted system prompt selection if available
+  useEffect(() => {
+    if (!systemPrompts || systemPrompts.length === 0) return;
+
+    // If we have a persisted system prompt ID, check if it still exists in system prompts
+    if (selectedSystemPromptId) {
+      const persistedPrompt = systemPrompts.find(
+        (prompt) => prompt.id === selectedSystemPromptId
+      );
+      if (persistedPrompt) {
+        // Persisted system prompt still exists, use it
+        onSystemPromptChange?.(selectedSystemPromptId, persistedPrompt);
+        return;
+      }
+    }
+
+    // No valid persisted system prompt, default to none (empty state)
+    onSystemPromptChange?.(null, null);
+  }, [systemPrompts, selectedSystemPromptId, onSystemPromptChange]);
 
   // Calculate if input should be compact based on content
   useEffect(() => {
@@ -49,12 +107,12 @@ export function EnhancedChatInput({
     }
 
     // Count lines by splitting on newlines
-    const lines = message.split('\n');
+    const lines = message.split("\n");
     const hasMultipleLines = lines.length > 2;
-    
+
     // Also check if any single line is too long (rough estimate)
-    const hasLongLine = lines.some(line => line.length > 50);
-    
+    const hasLongLine = lines.some((line) => line.length > 50);
+
     setIsCompact(!hasMultipleLines && !hasLongLine);
   }, [message]);
 
@@ -75,21 +133,33 @@ export function EnhancedChatInput({
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    setFiles(prev => [...prev, ...selectedFiles]);
+    setFiles((prev) => [...prev, ...selectedFiles]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleModelChange = (configId: string) => {
-    setSelectedConfigId(configId);
-    const selectedConfig = configurations?.find(config => config.id === configId);
+    const selectedConfig = configurations?.find(
+      (config) => config.id === configId
+    );
     if (selectedConfig) {
+      setStoredModel(configId, selectedConfig);
       onModelChange?.(configId, selectedConfig);
+    }
+  };
+
+  const handleSystemPromptChange = (promptId: string) => {
+    const selectedPrompt = systemPrompts?.find(
+      (prompt) => prompt.id === promptId
+    );
+    if (selectedPrompt) {
+      setStoredSystemPrompt(promptId, selectedPrompt);
+      onSystemPromptChange?.(promptId, selectedPrompt);
     }
   };
 
@@ -98,10 +168,36 @@ export function EnhancedChatInput({
     return `${config.name} (${modelName})`;
   };
 
-  const selectedConfig = configurations?.find(config => config.id === selectedConfigId);
+  const getSystemPromptDisplayName = (prompt: SystemPrompt): string => {
+    return prompt.title;
+  };
+
+  const selectedConfig = configurations?.find(
+    (config) => config.id === selectedModelId
+  );
+
+  const selectedSystemPrompt = systemPrompts?.find(
+    (prompt) => prompt.id === selectedSystemPromptId
+  );
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <>
+     {/* Scroll to bottom button */}
+      {showScrollButton && onScrollToBottom && (
+        <div className="flex justify-end mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onScrollToBottom}
+            className="h-8 px-3 py-1 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90 shadow-sm flex items-center gap-1"
+            title="Scroll to bottom"
+          >
+            <ChevronDown className="h-4 w-4" />
+            <span className="text-xs">Scroll to bottom</span>
+          </Button>
+        </div>
+      )}
+
       {/* File attachments */}
       {files.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
@@ -126,9 +222,9 @@ export function EnhancedChatInput({
       )}
 
       {/* Main input container */}
-      <div className="relative border border-border/60 rounded-2xl bg-background/50 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+      <div className="relative border border-border/20 rounded-md border-2 bg-background focus-within:border-primary/40 transition-all">
         {/* Text input area */}
-        <div className={`px-4 transition-all duration-200 ${isCompact ? 'pt-2 pb-2' : 'pt-4 pb-3'}`}>
+        <div className={`px-4 transition-all duration-200 ${isCompact ? "py-3" : "py-4"}`}>
           <Textarea
             ref={textareaRef}
             value={message}
@@ -138,30 +234,35 @@ export function EnhancedChatInput({
             disabled={disabled}
             autoFocus={autoFocus}
             className={`${
-              isCompact ? 'min-h-[40px]' : 'min-h-[80px]'
-            } max-h-40 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-relaxed placeholder:text-muted-foreground/60 transition-all duration-200 overflow-y-auto`}
+              isCompact ? "min-h-[44px]" : "min-h-[80px]"
+            } max-h-32 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-muted-foreground/60 px-0 transition-all duration-200`}
             rows={isCompact ? 1 : undefined}
           />
         </div>
 
-        {/* Bottom row with model selector and actions */}
-        <div className="flex items-center justify-between px-4 pb-3 pt-1">
-          {/* Model selector */}
+        {/* Bottom row with controls */}
+        <div className="flex items-center justify-between px-4 pb-3">
+          {/* Left side - Model selector */}
           <div className="flex items-center gap-2">
             {isLoading ? (
-              <div className="h-8 w-36 bg-muted animate-pulse rounded-md" />
+              <div className="h-8 w-32 bg-muted animate-pulse rounded-md" />
             ) : configurations && configurations.length > 0 ? (
-              <Select value={selectedConfigId} onValueChange={handleModelChange}>
-                <SelectTrigger className="h-8 min-w-[160px] border-none bg-transparent hover:bg-muted/50 focus:ring-0 text-sm font-medium">
+              <Select
+                value={selectedModelId || ""}
+                onValueChange={handleModelChange}
+              >
+                <SelectTrigger className="h-8 px-3 border-none bg-transparent hover:bg-muted/50 focus:ring-0 text-sm font-medium">
                   <SelectValue placeholder="Select model..." />
                 </SelectTrigger>
                 <SelectContent>
                   {configurations.map((config) => (
                     <SelectItem key={config.id} value={config.id}>
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          config.isActive ? "bg-green-500" : "bg-gray-400"
-                        }`} />
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            config.isActive ? "bg-green-500" : "bg-gray-400"
+                          }`}
+                        />
                         <span>{getModelDisplayName(config)}</span>
                       </div>
                     </SelectItem>
@@ -178,9 +279,38 @@ export function EnhancedChatInput({
                 No models configured
               </Button>
             )}
+
+            {/* System Prompts selector */}
+            {systemPrompts && systemPrompts.length > 0 && (
+              <Select
+                value={selectedSystemPromptId || "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setStoredSystemPrompt(null, null);
+                    onSystemPromptChange?.(null, null);
+                  } else {
+                    handleSystemPromptChange(value);
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 px-3 border-none bg-transparent hover:bg-muted/50 focus:ring-0 text-sm font-medium">
+                  <SelectValue placeholder="System prompt..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="text-muted-foreground">None</span>
+                  </SelectItem>
+                  {systemPrompts.map((prompt) => (
+                    <SelectItem key={prompt.id} value={prompt.id}>
+                      <span>{getSystemPromptDisplayName(prompt)}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          {/* Action buttons */}
+          {/* Right side - Action buttons */}
           <div className="flex items-center gap-2">
             {/* File attachment button */}
             <Button
@@ -196,16 +326,22 @@ export function EnhancedChatInput({
             {/* Send button */}
             <Button
               onClick={handleSubmit}
-              disabled={(!message.trim() && files.length === 0) || disabled || !selectedConfig}
+              disabled={
+                (!message.trim() && files.length === 0) ||
+                disabled ||
+                !selectedConfig
+              }
               size="sm"
-              className="h-8 w-8 p-0 rounded-full"
+              className="h-8 w-8 p-0 rounded-full bg-primary hover:bg-primary/90"
               title="Send message"
             >
-              <Send className="h-4 w-4" />
+              <svg className="h-4 w-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
             </Button>
           </div>
         </div>
-         {/* <p className="text-xs text-muted-foreground text-center pb-2">
+        {/* <p className="text-xs text-muted-foreground text-center pb-2">
             AI can make mistakes. Check important info.
           </p> */}
 
@@ -219,13 +355,6 @@ export function EnhancedChatInput({
           className="hidden"
         />
       </div>
-
-      {/* Model info */}
-      {selectedConfig && (
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Using {selectedConfig.name} ({selectedConfig.provider})
-        </p>
-      )}
-    </div>
+    </>
   );
 }

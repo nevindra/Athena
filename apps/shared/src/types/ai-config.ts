@@ -40,7 +40,6 @@ export interface HttpApiConfigSettings {
   frequencyPenalty: number;
   headers: Record<string, string>;
   authType: "bearer" | "api-key" | "custom" | "none";
-  customPrompt?: string;
   streamResponse: boolean;
 }
 

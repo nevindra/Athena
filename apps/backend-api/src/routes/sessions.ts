@@ -127,11 +127,6 @@ export const sessionRoutes = new Elysia({ prefix: "/sessions" })
       let messageData: any;
       let files: File[] | undefined;
 
-      console.log("=== MESSAGE UPLOAD DEBUG ===");
-      console.log("Body type:", typeof body);
-      console.log("Is FormData:", body instanceof FormData);
-      console.log("Body:", body);
-
       if (body instanceof FormData) {
         // Extract message data from form data
         messageData = {
@@ -143,11 +138,6 @@ export const sessionRoutes = new Elysia({ prefix: "/sessions" })
         const fileEntries = body.getAll('files');
         files = fileEntries.filter(entry => entry instanceof File) as File[];
         
-        console.log("FormData entries:");
-        console.log("- role:", body.get('role'));
-        console.log("- content:", body.get('content'));
-        console.log("- files count:", files?.length || 0);
-        console.log("- file details:", files?.map(f => ({ name: f.name, type: f.type, size: f.size })));
       } else {
         // Regular JSON body
         messageData = {

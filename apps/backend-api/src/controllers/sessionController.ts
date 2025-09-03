@@ -75,13 +75,6 @@ export async function handleGetUserSessions(userId: string) {
 export async function handleAddMessage(sessionId: string, request: AddMessageRequest) {
   const { role, content, files } = request;
 
-  console.log("=== HANDLE ADD MESSAGE DEBUG ===");
-  console.log("sessionId:", sessionId);
-  console.log("role:", role);
-  console.log("content:", content);
-  console.log("files:", files ? `${files.length} files` : "no files");
-  console.log("file details:", files?.map(f => ({ name: f.name, type: f.type, size: f.size })));
-
   // Verify session exists
   const [session] = await db.select()
     .from(chatSessions)

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { AppHeader } from "~/components/app-header";
+import { AppHeader } from "@/components/navigation/app-header";
 import { ProviderConfig } from "@/features/models/provider-config";
 import { ProviderSelection } from "@/features/models/provider-selection";
 import type { Route } from "./+types/models.add";

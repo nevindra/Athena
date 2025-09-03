@@ -19,6 +19,7 @@ export interface ChatRequestBody {
   userId: string;
   configurationId?: string;
   sessionId?: string;
+  systemPromptId?: string;
   files?: Array<{
     name: string;
     type: string;
@@ -76,7 +77,7 @@ async function fetchMessageAttachments(sessionId: string) {
 }
 
 export async function handleChatRequest(body: ChatRequestBody) {
-  const { messages, userId, configurationId, sessionId, files } = body;
+  const { messages, userId, configurationId, sessionId, systemPromptId, files } = body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     throw new Error("Messages array is required and cannot be empty");
@@ -105,8 +106,9 @@ export async function handleChatRequest(body: ChatRequestBody) {
     messages,
     userId,
     configurationId,
-    files,
     sessionId,
+    systemPromptId,
+    files,
     attachmentFiles,
   };
 
@@ -129,7 +131,7 @@ export async function handleChatRequest(body: ChatRequestBody) {
 }
 
 export async function handleStreamChatRequest(body: ChatRequestBody) {
-  const { messages, userId, configurationId, sessionId, files } = body;
+  const { messages, userId, configurationId, sessionId, systemPromptId, files } = body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     throw new Error("Messages array is required and cannot be empty");
@@ -158,8 +160,9 @@ export async function handleStreamChatRequest(body: ChatRequestBody) {
     messages,
     userId,
     configurationId,
-    files,
     sessionId,
+    systemPromptId,
+    files,
     attachmentFiles,
   };
 

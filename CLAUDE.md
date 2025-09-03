@@ -20,14 +20,12 @@ This is a monorepo with three main packages:
 - Modern React-based chat interface built with React Router v7
 - Comprehensive AI model configuration system supporting multiple providers
 - Professional UI built with shadcn/ui components and Radix UI primitives
-- Features include model selection, parameter tuning, and provider management
 - Real-time chat functionality with streaming AI responses
 
 **Backend API**
 - High-performance Elysia server running on Bun runtime
 - RESTful API for AI model configuration management
 - Database integration with Drizzle ORM and PostgreSQL
-- Support for multiple AI providers: OpenAI, Gemini, Ollama, and custom HTTP APIs
 - Built-in encryption service for secure API key storage
 
 **Shared Package**
@@ -42,7 +40,6 @@ This is a monorepo with three main packages:
 - **Frontend**: React Router v7, Tailwind CSS v4, shadcn/ui components, Radix UI
 - **Shared**: TypeScript, Zod validation
 - **Tooling**: Biome (linting/formatting), TanStack Query (data fetching)
-- **AI Integration**: Vercel AI SDK, OpenAI SDK, Ollama provider
 
 ## Development Commands
 
@@ -87,7 +84,10 @@ bun run start        # Production server
 - Uses shadcn/ui component library with Radix UI primitives
 - Tailwind CSS for styling with custom configuration
 - File-based routing in `app/routes/` directory
-- Components organized in `app/components/` with UI components in `app/components/ui/`
+- Component-Driven Development architecture:
+  - `app/components/`: Small, reusable UI components (individual LEGO bricks). Create dedicated directory to manage.
+  - `app/features/`: Large, feature-specific sections and complex components (pre-assembled LEGO sections) Create dedicated directory to manage.
+  - `app/routes/`: Complete pages assembled from features (final LEGO model)
 
 ### Code Standards
 - Biome configuration enforces:
@@ -197,48 +197,9 @@ bun run start        # Production server
   - Use unique styling for system messages and notifications
   - Make error states visually distinct without being alarming
 
-### Pareto Principle (80/20 Rule)
-- **Principle**: 80% of effects come from 20% of causes
-- **Implementation**:
-  - Focus on core chat functionality first: send, receive, scroll
-  - Optimize for the most common use cases: text messages, quick replies
-  - Prioritize performance for basic operations over advanced features
-
 ### Zeigarnik Effect
 - **Principle**: Incomplete tasks are remembered better than completed ones
 - **Implementation**:
   - Show typing indicators to create anticipation
   - Use progressive loading for long AI responses
   - Display "draft" indicators for unsent messages
-
-## Chat UI Specific Guidelines
-
-### Message Design
-- Use asymmetrical bubble layout (user right, AI left)
-- Implement smooth message streaming for AI responses
-- Support markdown rendering with syntax highlighting
-- Show timestamps on hover/long press to reduce clutter
-
-### Conversation Management
-- Implement conversation search with context highlighting
-- Use infinite scroll with intelligent loading
-- Provide conversation export functionality
-- Support conversation branching for different topics
-
-### Interaction Patterns
-- Copy message content with single tap
-- Regenerate AI responses with clear affordances
-- Support message reactions with emoji picker
-- Enable voice input with visual feedback
-
-### Performance Considerations
-- Virtualize long conversation lists
-- Lazy load message history
-- Optimize for 60fps scrolling
-- Implement efficient real-time updates
-
-## Important Files
-- `biome.json` - Code formatting and linting rules
-- `apps/frontend/components.json` - shadcn/ui configuration
-- `apps/frontend/react-router.config.ts` - React Router configuration
-- `apps/frontend/app/routes.ts` - Route definitions

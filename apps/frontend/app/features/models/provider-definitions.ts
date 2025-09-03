@@ -33,7 +33,7 @@ export interface FieldDefinition {
 }
 
 export interface SpecialSection {
-  type: "quick-setup" | "installation-guide" | "model-params" | "custom-prompt";
+  type: "quick-setup" | "installation-guide" | "model-params";
   title?: string;
   props?: Record<string, unknown>;
 }
@@ -82,11 +82,42 @@ const geminiProvider: ProviderDefinition = {
       ],
     },
     {
+      key: "temperature",
+      label: "Temperature", 
+      type: "slider",
+      description: "Higher values = more creative, lower = more focused",
+      options: { min: 0, max: 2, step: 0.1 },
+    },
+    {
+      key: "maxTokens",
+      label: "Max Tokens",
+      type: "slider", 
+      description: "Maximum response length in tokens",
+      options: { min: 1, max: 8192, step: 1 },
+    },
+    {
+      key: "topP",
+      label: "Top-p",
+      type: "slider",
+      description: "Nucleus sampling - controls word choice diversity", 
+      options: { min: 0, max: 1, step: 0.1 },
+    },
+    {
       key: "topK",
       label: "Top-k",
       type: "slider",
       description: "Limits the number of highest probability tokens to consider for each step.",
       options: { min: 1, max: 100, step: 1 },
+    },
+    {
+      key: "streamResponse",
+      label: "Stream Response",
+      type: "select",
+      description: "Enable real-time streaming for immediate response feedback",
+      options: [
+        { value: "true", label: "Enabled" },
+        { value: "false", label: "Disabled" }
+      ],
     },
   ],
   defaultValues: {
@@ -97,12 +128,9 @@ const geminiProvider: ProviderDefinition = {
     maxTokens: 2048,
     topP: 0.9,
     topK: 40,
-    customPrompt: "",
+    streamResponse: "true",
   },
-  specialSections: [
-    { type: "model-params" },
-    { type: "custom-prompt" },
-  ],
+  specialSections: [],
   validation: {
     required: ["name", "apiKey"],
   },
@@ -169,6 +197,51 @@ const httpApiProvider: ProviderDefinition = {
         value: "custom",
       },
     },
+    {
+      key: "temperature",
+      label: "Temperature", 
+      type: "slider",
+      description: "Higher values = more creative, lower = more focused",
+      options: { min: 0, max: 2, step: 0.1 },
+    },
+    {
+      key: "maxTokens",
+      label: "Max Tokens",
+      type: "slider", 
+      description: "Maximum response length in tokens",
+      options: { min: 1, max: 8192, step: 1 },
+    },
+    {
+      key: "topP",
+      label: "Top-p",
+      type: "slider",
+      description: "Nucleus sampling - controls word choice diversity", 
+      options: { min: 0, max: 1, step: 0.1 },
+    },
+    {
+      key: "presencePenalty",
+      label: "Presence Penalty",
+      type: "slider",
+      description: "Penalize topics that appear in the text",
+      options: { min: -2, max: 2, step: 0.1 },
+    },
+    {
+      key: "frequencyPenalty", 
+      label: "Frequency Penalty",
+      type: "slider",
+      description: "Penalize words that repeat frequently",
+      options: { min: -2, max: 2, step: 0.1 },
+    },
+    {
+      key: "streamResponse",
+      label: "Stream Response",
+      type: "select",
+      description: "Enable real-time streaming for immediate response feedback",
+      options: [
+        { value: "true", label: "Enabled" },
+        { value: "false", label: "Disabled" }
+      ],
+    },
   ],
   defaultValues: {
     name: "",
@@ -182,13 +255,10 @@ const httpApiProvider: ProviderDefinition = {
     frequencyPenalty: 0,
     headers: {},
     authType: "bearer",
-    customPrompt: "",
-    streamResponse: true,
+    streamResponse: "true",
   },
   specialSections: [
     { type: "quick-setup" },
-    { type: "model-params" },
-    { type: "custom-prompt" },
   ],
   validation: {
     required: ["name", "baseUrl", "model"],
@@ -196,7 +266,7 @@ const httpApiProvider: ProviderDefinition = {
       if (
         data.authType !== "custom" &&
         data.authType !== "none" &&
-        !data.apiKey?.trim()
+        !(data.apiKey as string)?.trim?.()
       ) {
         return "Please enter your API key or token";
       }
@@ -302,7 +372,7 @@ export const PROVIDER_DEFINITIONS: Record<ProviderType, ProviderDefinition> = {
   ollama: ollamaProvider,
 };
 
-// Helper function to get provider definition
+
 export const getProviderDefinition = (provider: ProviderType): ProviderDefinition => {
   return PROVIDER_DEFINITIONS[provider];
 };
@@ -316,30 +386,29 @@ export const prepareSettingsForApi = (
 
   switch (provider) {
     case "gemini": {
-      const settingsTyped = settings as any;
-      const { customPrompt, ...geminiSettings } = settingsTyped;
+      const settingsTyped = settings as Record<string, unknown>;
       return {
-        ...geminiSettings,
+        ...settingsTyped,
         temperature: typeof settingsTyped.temperature === "string" ? Number.parseFloat(settingsTyped.temperature) || 0.7 : settingsTyped.temperature,
-        maxTokens: typeof settingsTyped.maxTokens === "string" ? Number.parseInt(settingsTyped.maxTokens) || 2048 : settingsTyped.maxTokens,
+        maxTokens: typeof settingsTyped.maxTokens === "string" ? Number.parseInt(settingsTyped.maxTokens, 10) || 2048 : settingsTyped.maxTokens,
         topP: typeof settingsTyped.topP === "string" ? Number.parseFloat(settingsTyped.topP) || 0.9 : settingsTyped.topP,
       } as GeminiConfigSettings;
     }
 
     case "http-api": {
-      const settingsTyped = settings as any;
+      const settingsTyped = settings as Record<string, unknown>;
       const baseSettings = {
         ...settingsTyped,
         temperature: typeof settingsTyped.temperature === "string" ? Number.parseFloat(settingsTyped.temperature) || 0.7 : settingsTyped.temperature,
-        maxTokens: typeof settingsTyped.maxTokens === "string" ? Number.parseInt(settingsTyped.maxTokens) || 2048 : settingsTyped.maxTokens,
+        maxTokens: typeof settingsTyped.maxTokens === "string" ? Number.parseInt(settingsTyped.maxTokens, 10) || 2048 : settingsTyped.maxTokens,
         topP: typeof settingsTyped.topP === "string" ? Number.parseFloat(settingsTyped.topP) || 1.0 : settingsTyped.topP,
         presencePenalty: typeof settingsTyped.presencePenalty === "string" ? Number.parseFloat(settingsTyped.presencePenalty) || 0 : settingsTyped.presencePenalty,
         frequencyPenalty: typeof settingsTyped.frequencyPenalty === "string" ? Number.parseFloat(settingsTyped.frequencyPenalty) || 0 : settingsTyped.frequencyPenalty,
       };
 
       // Handle API key based on auth type
-      if (settingsTyped.authType === "none" || settingsTyped.authType === "custom" || !settingsTyped.apiKey?.trim?.()) {
-        const { apiKey, ...preparedSettings } = baseSettings;
+      if (settingsTyped.authType === "none" || settingsTyped.authType === "custom" || !(settingsTyped.apiKey as string)?.trim?.()) {
+        const { apiKey, ...preparedSettings } = baseSettings as Record<string, unknown>;
         return preparedSettings as HttpApiConfigSettings;
       }
 

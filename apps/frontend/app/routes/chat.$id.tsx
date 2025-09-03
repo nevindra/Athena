@@ -1,11 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { AppHeader } from "~/components/app-header";
+import { AppHeader } from "@/components/navigation/app-header";
 import { EnhancedChatInput } from "~/features/welcome/enhanced-chat-input";
 import { Message } from "~/features/chat/message";
-import { useSession, useAddMessage, useChatCompletion } from "~/hooks/use-sessions";
+import {
+  useSession,
+  useAddMessage,
+  useChatCompletion,
+} from "~/hooks/use-sessions";
 import type { Route } from "./+types/chat.$id";
 import type { AIConfiguration } from "@athena/shared";
+import { Button } from "@/components/ui/button";
+import { useSystemPromptStore } from "~/stores/system-prompt-store";
 
 export function meta({ params }: Route.MetaArgs) {
   return [
@@ -44,36 +50,106 @@ export default function Chat({ params }: Route.ComponentProps) {
   const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(
     location.state?.selectedConfig || null
   );
-  const [attachedFiles, setAttachedFiles] = useState<File[]>(
-    location.state?.initialFiles || []
-  );
+  // Use system prompt ID from store instead of local state
+  const { selectedSystemPromptId } = useSystemPromptStore();
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const sessionQuery = useSession(params.id);
   const addMessage = useAddMessage();
   const chatCompletion = useChatCompletion();
 
+  // Check scroll position and content overflow
+  const checkScrollPosition = useCallback(() => {
+    if (!messagesContainerRef.current) {
+      return;
+    }
+
+    const container = messagesContainerRef.current;
+    const scrollTop = container.scrollTop;
+    const clientHeight = container.clientHeight;
+    const scrollHeight = container.scrollHeight;
+    // Account for sticky input height - increase threshold to 120px
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 120;
+    const hasOverflow = scrollHeight > clientHeight;
+
+    setShowScrollToBottom(hasOverflow && !isAtBottom);
+  }, []);
+
+  // Add scroll event listener and resize observer
+  useEffect(() => {
+    if (!sessionQuery.data || !messagesContainerRef.current) return;
+
+    const container = messagesContainerRef.current;
+
+    const handleScroll = () => {
+      checkScrollPosition();
+    };
+
+    // ResizeObserver to detect content size changes
+    const resizeObserver = new ResizeObserver(() => {
+      checkScrollPosition();
+    });
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    resizeObserver.observe(container);
+
+    // Check initial position
+    checkScrollPosition();
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [checkScrollPosition, sessionQuery.data]);
+
+  // Check scroll position when messages change and auto-scroll for user messages
+  useEffect(() => {
+    if (!sessionQuery.data || !messagesContainerRef.current) return;
+
+    checkScrollPosition();
+
+    // Auto-scroll to bottom when user sends a message or when loading new content
+    const container = messagesContainerRef.current;
+    const wasAtBottom =
+      container.scrollTop + container.clientHeight >=
+      container.scrollHeight - 120;
+
+    if (wasAtBottom || messages.length === 0) {
+      // Small delay to ensure DOM has updated
+      setTimeout(() => {
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }, 0);
+    }
+  }, [messages, sessionQuery.data, checkScrollPosition]);
+
   useEffect(() => {
     // Load session data when available
     if (sessionQuery.data) {
-      const sessionMessages = sessionQuery.data.messages?.map((msg: BackendMessage) => {
-        // Convert backend attachments to frontend format
-        const attachments = msg.attachments && Array.isArray(msg.attachments) 
-          ? msg.attachments.map(att => ({
-              type: "image" as const,
-              url: `http://localhost:3000/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
-              name: att.filename,
-            }))
-          : undefined;
+      const sessionMessages =
+        sessionQuery.data.messages?.map((msg: BackendMessage) => {
+          // Convert backend attachments to frontend format
+          const attachments =
+            msg.attachments && Array.isArray(msg.attachments)
+              ? msg.attachments.map((att) => ({
+                  type: "image" as const,
+                  url: `http://localhost:3000/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
+                  name: att.filename,
+                }))
+              : undefined;
 
-        return {
-          id: msg.id,
-          content: msg.content,
-          role: msg.role as "user" | "assistant",
-          timestamp: new Date(msg.createdAt),
-          attachments: attachments && attachments.length > 0 ? attachments : undefined,
-        };
-      }) || [];
-      
+          return {
+            id: msg.id,
+            content: msg.content,
+            role: msg.role as "user" | "assistant",
+            timestamp: new Date(msg.createdAt),
+            attachments:
+              attachments && attachments.length > 0 ? attachments : undefined,
+          };
+        }) || [];
+
       setMessages(sessionMessages);
 
       // If this is a new session with only one user message, get AI response
@@ -83,19 +159,23 @@ export default function Chat({ params }: Route.ComponentProps) {
     }
   }, [sessionQuery.data]);
 
-  const handleAIResponse = async (currentMessages: Message[], files?: File[]) => {
+  const handleAIResponse = async (
+    currentMessages: Message[],
+    files?: File[]
+  ) => {
     if (!selectedConfig) return;
-    
+
     setIsLoading(true);
     try {
       const response = await chatCompletion.mutateAsync({
-        messages: currentMessages.map(msg => ({
+        messages: currentMessages.map((msg) => ({
           role: msg.role,
           content: msg.content,
         })),
         userId: "01HZXM0K1QRST9VWXYZ01234AB",
         configurationId: selectedConfig.id,
         sessionId: params.id,
+        systemPromptId: selectedSystemPromptId || undefined,
         files,
       });
 
@@ -106,17 +186,17 @@ export default function Chat({ params }: Route.ComponentProps) {
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error("Failed to get AI response:", error);
-      
+
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         content: "Sorry, I encountered an error. Please try again.",
         role: "assistant",
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +208,19 @@ export default function Chat({ params }: Route.ComponentProps) {
 
   const handleSettingsClick = () => {
     navigate("/models");
+  };
+
+  const handleSystemPromptSettingsClick = () => {
+    navigate("/system-prompts");
+  };
+
+  const handleScrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   const handleNewMessage = async (message: string, files?: File[]) => {
@@ -162,7 +255,7 @@ export default function Chat({ params }: Route.ComponentProps) {
     };
 
     // Add user message to UI immediately
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     try {
       // Save user message to session
@@ -180,14 +273,14 @@ export default function Chat({ params }: Route.ComponentProps) {
       await handleAIResponse(allMessages, files);
     } catch (error) {
       console.error("Failed to send message:", error);
-      
+
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         content: "Failed to send message. Please try again.",
         role: "assistant",
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
@@ -203,7 +296,7 @@ export default function Chat({ params }: Route.ComponentProps) {
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading chat session...</p>
           </div>
         </div>
@@ -224,12 +317,12 @@ export default function Chat({ params }: Route.ComponentProps) {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-destructive mb-4">Failed to load chat session</p>
-            <button 
+            <Button
               onClick={() => navigate("/")}
               className="text-primary hover:underline"
             >
               Go back to home
-            </button>
+            </Button>
           </div>
         </div>
       </>
@@ -242,56 +335,75 @@ export default function Chat({ params }: Route.ComponentProps) {
         breadcrumbs={[
           { label: "Athena AI", href: "/" },
           { label: "Chat", href: "/" },
-          { label: sessionQuery.data?.title || `Session ${params.id.slice(0, 8)}...`, isCurrentPage: true },
+          {
+            label:
+              sessionQuery.data?.title || `Session ${params.id.slice(0, 8)}...`,
+            isCurrentPage: true,
+          },
         ]}
       />
-      <div className="flex-1 flex flex-col bg-background">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-            {messages.map((message) => (
-              <Message
-                key={message.id}
-                id={message.id}
-                content={message.content}
-                role={message.role}
-                timestamp={message.timestamp}
-                attachments={message.attachments}
-              />
-            ))}
+      <div className="flex-1 flex flex-col">
+        {/* Messages Container */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto pb-24"
+          style={{
+            scrollBehavior: "auto",
+          }}
+        >
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            {/* Messages */}
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <Message
+                  key={message.id}
+                  id={message.id}
+                  content={message.content}
+                  role={message.role}
+                  timestamp={message.timestamp}
+                  attachments={message.attachments}
+                />
+              ))}
 
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted p-4 rounded-2xl">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-                      <div
-                        className="w-2 h-2 bg-current rounded-full animate-pulse"
-                        style={{ animationDelay: "0.2s" }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-current rounded-full animate-pulse"
-                        style={{ animationDelay: "0.4s" }}
-                      />
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted p-4 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
+                        <div
+                          className="w-2 h-2 bg-current rounded-full animate-pulse"
+                          style={{ animationDelay: "0.2s" }}
+                        />
+                        <div
+                          className="w-2 h-2 bg-current rounded-full animate-pulse"
+                          style={{ animationDelay: "0.4s" }}
+                        />
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        Thinking...
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      Thinking...
-                    </span>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Input area with enhanced chat input */}
-        <div className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
+        {/* Chat Input Container - Separate bottom container */}
+        <div className="sticky bottom-0 w-full">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <EnhancedChatInput
               onSubmit={handleNewMessage}
               onModelChange={handleModelChange}
+              onSystemPromptChange={(_, prompt) => {
+                console.log("Selected system prompt:", prompt);
+              }}
               onSettingsClick={handleSettingsClick}
+              onSystemPromptSettingsClick={handleSystemPromptSettingsClick}
+              onScrollToBottom={showScrollToBottom ? handleScrollToBottom : undefined}
+              showScrollButton={showScrollToBottom}
               placeholder="Type your message here..."
               disabled={isLoading}
               selectedModel={selectedConfig?.id}

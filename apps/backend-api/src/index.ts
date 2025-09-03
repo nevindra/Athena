@@ -6,6 +6,7 @@ import { configurationsRoutes } from "./routes/configurations";
 import { aiRoutes } from "./routes/ai";
 import { sessionRoutes } from "./routes/sessions";
 import { filesRoutes } from "./routes/files";
+import { systemPromptsRoutes } from "./routes/system-prompts";
 import swagger from "@elysiajs/swagger";
 import { logger, logApiRequest, logApiSuccess, logApiError, logApiWarning } from "./utils/logger";
 
@@ -78,6 +79,7 @@ const app = new Elysia()
        .use(aiRoutes)
        .use(sessionRoutes)
        .use(filesRoutes)
+       .use(systemPromptsRoutes)
   )
 
   // Start server
