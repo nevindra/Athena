@@ -31,7 +31,9 @@ const EXAMPLE_PROMPTS = [
 export function WelcomeScreen() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(null);
+  const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(
+    null,
+  );
   const createSession = useCreateSession();
 
   const handleSubmit = async (message: string, files?: File[]) => {
@@ -53,7 +55,7 @@ export function WelcomeScreen() {
 
       // Navigate to chat route with the session ID
       navigate(`/chat/${session.id}`, {
-        state: { 
+        state: {
           selectedConfig: selectedConfig,
           initialFiles: files,
         },
@@ -135,7 +137,6 @@ export function WelcomeScreen() {
             onModelChange={handleModelChange}
             onSystemPromptChange={(promptId, prompt) => {
               // Handle system prompt selection - could be passed to session creation
-              console.log("Selected system prompt:", prompt);
             }}
             onSettingsClick={handleSettingsClick}
             onSystemPromptSettingsClick={handleSystemPromptSettingsClick}

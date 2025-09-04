@@ -19,7 +19,10 @@ import type { AIConfiguration, SystemPrompt } from "@athena/shared";
 interface EnhancedChatInputProps {
   onSubmit: (message: string, files?: File[]) => void;
   onModelChange?: (configId: string, config: AIConfiguration) => void;
-  onSystemPromptChange?: (promptId: string | null, prompt: SystemPrompt | null) => void;
+  onSystemPromptChange?: (
+    promptId: string | null,
+    prompt: SystemPrompt | null,
+  ) => void;
   onSettingsClick?: () => void;
   onSystemPromptSettingsClick?: () => void;
   placeholder?: string;
@@ -51,9 +54,12 @@ export function EnhancedChatInput({
 
   const { data: configurations, isLoading } = useConfigurations();
   const { selectedModelId, setSelectedModel: setStoredModel } = useModelStore();
-  
+
   const { data: systemPrompts } = useSystemPrompts();
-  const { selectedSystemPromptId, setSelectedSystemPrompt: setStoredSystemPrompt } = useSystemPromptStore();
+  const {
+    selectedSystemPromptId,
+    setSelectedSystemPrompt: setStoredSystemPrompt,
+  } = useSystemPromptStore();
 
   // Auto-select first available model or use persisted selection
   useEffect(() => {
@@ -62,7 +68,7 @@ export function EnhancedChatInput({
     // If we have a persisted model ID, check if it still exists in configurations
     if (selectedModelId) {
       const persistedConfig = configurations.find(
-        (config) => config.id === selectedModelId
+        (config) => config.id === selectedModelId,
       );
       if (persistedConfig) {
         // Persisted model still exists, use it
@@ -86,7 +92,7 @@ export function EnhancedChatInput({
     // If we have a persisted system prompt ID, check if it still exists in system prompts
     if (selectedSystemPromptId) {
       const persistedPrompt = systemPrompts.find(
-        (prompt) => prompt.id === selectedSystemPromptId
+        (prompt) => prompt.id === selectedSystemPromptId,
       );
       if (persistedPrompt) {
         // Persisted system prompt still exists, use it
@@ -145,7 +151,7 @@ export function EnhancedChatInput({
 
   const handleModelChange = (configId: string) => {
     const selectedConfig = configurations?.find(
-      (config) => config.id === configId
+      (config) => config.id === configId,
     );
     if (selectedConfig) {
       setStoredModel(configId, selectedConfig);
@@ -155,7 +161,7 @@ export function EnhancedChatInput({
 
   const handleSystemPromptChange = (promptId: string) => {
     const selectedPrompt = systemPrompts?.find(
-      (prompt) => prompt.id === promptId
+      (prompt) => prompt.id === promptId,
     );
     if (selectedPrompt) {
       setStoredSystemPrompt(promptId, selectedPrompt);
@@ -173,16 +179,16 @@ export function EnhancedChatInput({
   };
 
   const selectedConfig = configurations?.find(
-    (config) => config.id === selectedModelId
+    (config) => config.id === selectedModelId,
   );
 
   const selectedSystemPrompt = systemPrompts?.find(
-    (prompt) => prompt.id === selectedSystemPromptId
+    (prompt) => prompt.id === selectedSystemPromptId,
   );
 
   return (
     <>
-     {/* Scroll to bottom button */}
+      {/* Scroll to bottom button */}
       {showScrollButton && onScrollToBottom && (
         <div className="flex justify-end mb-2">
           <Button
@@ -200,19 +206,19 @@ export function EnhancedChatInput({
 
       {/* File attachments */}
       {files.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-2">
           {files.map((file, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg text-sm"
+              className="flex items-center gap-2 bg-muted/50 backdrop-blur-sm px-3 py-2 rounded-lg text-sm border border-border/20 shadow-sm"
             >
-              <Paperclip className="h-3 w-3" />
-              <span className="truncate max-w-32">{file.name}</span>
+              <Paperclip className="h-3 w-3 text-muted-foreground" />
+              <span className="truncate max-w-32 font-medium">{file.name}</span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => removeFile(index)}
-                className="h-4 w-4 p-0 hover:bg-destructive/20"
+                className="h-4 w-4 p-0 hover:bg-destructive/20 rounded-full"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -222,9 +228,11 @@ export function EnhancedChatInput({
       )}
 
       {/* Main input container */}
-      <div className="relative border border-border/20 rounded-md border-2 bg-background focus-within:border-primary/40 transition-all">
+      <div className="relative border border-border/30 rounded-xl bg-background/95 backdrop-blur-sm focus-within:border-primary/50 focus-within:bg-background transition-all duration-200 shadow-sm hover:shadow-md">
         {/* Text input area */}
-        <div className={`px-4 transition-all duration-200 ${isCompact ? "py-3" : "py-4"}`}>
+        <div
+          className={`px-2 transition-all duration-200 ${isCompact ? "py-3" : "py-4"}`}
+        >
           <Textarea
             ref={textareaRef}
             value={message}
@@ -235,17 +243,17 @@ export function EnhancedChatInput({
             autoFocus={autoFocus}
             className={`${
               isCompact ? "min-h-[44px]" : "min-h-[80px]"
-            } max-h-32 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-muted-foreground/60 px-0 transition-all duration-200`}
-            rows={isCompact ? 1 : undefined}
+            } max-h-40 resize-none border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-normal placeholder:text-muted-foreground/60 px-3 py-2 transition-all duration-200`}
+            rows={isCompact ? 1 : 3}
           />
         </div>
 
         {/* Bottom row with controls */}
-        <div className="flex items-center justify-between px-4 pb-3">
+        <div className="flex items-center justify-between px-5 pb-4 pt-1 border-t border-border/10">
           {/* Left side - Model selector */}
           <div className="flex items-center gap-2">
             {isLoading ? (
-              <div className="h-8 w-32 bg-muted animate-pulse rounded-md" />
+              <div className="h-8 w-32 bg-muted/50 animate-pulse rounded-md" />
             ) : configurations && configurations.length > 0 ? (
               <Select
                 value={selectedModelId || ""}
@@ -311,13 +319,13 @@ export function EnhancedChatInput({
           </div>
 
           {/* Right side - Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* File attachment button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="h-8 w-8 p-0 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 p-0 hover:bg-muted/50 text-muted-foreground hover:text-foreground rounded-full transition-colors"
               title="Attach files"
             >
               <Paperclip className="h-4 w-4" />
@@ -332,18 +340,25 @@ export function EnhancedChatInput({
                 !selectedConfig
               }
               size="sm"
-              className="h-8 w-8 p-0 rounded-full bg-primary hover:bg-primary/90"
+              className="h-9 w-9 p-0 rounded-full bg-primary hover:bg-primary/90 shadow-sm disabled:opacity-50 transition-all"
               title="Send message"
             >
-              <svg className="h-4 w-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              <svg
+                className="h-4 w-4 text-primary-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
             </Button>
           </div>
         </div>
-        {/* <p className="text-xs text-muted-foreground text-center pb-2">
-            AI can make mistakes. Check important info.
-          </p> */}
 
         {/* Hidden file input */}
         <input
