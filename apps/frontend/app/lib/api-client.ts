@@ -4,7 +4,7 @@ import type { ApiResponse } from "@athena/shared";
 // Create ky instance with base configuration
 export const apiClient = ky.create({
   prefixUrl: import.meta.env.VITE_API_URL || "/api",
-  timeout: 10000,
+  timeout: 30000,
   hooks: {
     beforeRequest: [
       () => {

@@ -48,7 +48,7 @@ export default function Chat({ params }: Route.ComponentProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(
-    location.state?.selectedConfig || null
+    location.state?.selectedConfig || null,
   );
   // Use system prompt ID from store instead of local state
   const { selectedSystemPromptId } = useSystemPromptStore();
@@ -161,7 +161,7 @@ export default function Chat({ params }: Route.ComponentProps) {
 
   const handleAIResponse = async (
     currentMessages: Message[],
-    files?: File[]
+    files?: File[],
   ) => {
     if (!selectedConfig) return;
 
@@ -397,12 +397,11 @@ export default function Chat({ params }: Route.ComponentProps) {
             <EnhancedChatInput
               onSubmit={handleNewMessage}
               onModelChange={handleModelChange}
-              onSystemPromptChange={(_, prompt) => {
-                console.log("Selected system prompt:", prompt);
-              }}
               onSettingsClick={handleSettingsClick}
               onSystemPromptSettingsClick={handleSystemPromptSettingsClick}
-              onScrollToBottom={showScrollToBottom ? handleScrollToBottom : undefined}
+              onScrollToBottom={
+                showScrollToBottom ? handleScrollToBottom : undefined
+              }
               showScrollButton={showScrollToBottom}
               placeholder="Type your message here..."
               disabled={isLoading}
