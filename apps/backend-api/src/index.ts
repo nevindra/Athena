@@ -14,7 +14,12 @@ import { logger, logApiRequest, logApiSuccess, logApiError, logApiWarning } from
 validateEnv();
 
 const app = new Elysia()
-  .use(cors())
+  .use(cors({
+    origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
+    credentials: env.CORS_ORIGIN !== "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+  }))
   .use(swagger())
   .derive(({ request, path }) => {
     const startTime = Date.now();
@@ -83,7 +88,10 @@ const app = new Elysia()
   )
 
   // Start server
-  .listen(env.PORT);
+  .listen({
+    port: env.PORT,
+    hostname: env.NODE_ENV === "production" ? "0.0.0.0" : "localhost",
+  });
 
 // Test database connection on startup
 testConnection().then((connected) => {

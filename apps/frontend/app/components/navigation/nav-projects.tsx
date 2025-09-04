@@ -25,8 +25,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useUserSessions, useDeleteSession, useUpdateSession } from "~/hooks/use-sessions";
+import { DEMO_USER_ID } from "~/services/sessions-api";
 
 interface ChatSession {
   id: string;
@@ -35,76 +36,15 @@ interface ChatSession {
   updatedAt: string;
 }
 
-const API_BASE = "http://localhost:3000/api";
-const USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
-
 export function NavChatHistory() {
   const { isMobile } = useSidebar();
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
-  const queryClient = useQueryClient();
 
-  const { data: sessions, isLoading, error } = useQuery({
-    queryKey: ["user-sessions", USER_ID],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE}/sessions?userId=${USER_ID}`);
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch sessions");
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to fetch sessions");
-      }
-
-      return result.data as ChatSession[];
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds to stay updated
-  });
-
-  const deleteSessionMutation = useMutation({
-    mutationFn: async (sessionId: string) => {
-      const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-        method: "DELETE",
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to delete session");
-      }
-      
-      return sessionId;
-    },
-    onSuccess: () => {
-      // Invalidate and refetch sessions
-      queryClient.invalidateQueries({ queryKey: ["user-sessions", USER_ID] });
-    },
-  });
-
-  const updateSessionMutation = useMutation({
-    mutationFn: async ({ sessionId, title }: { sessionId: string; title: string }) => {
-      const response = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to update session");
-      }
-      
-      return { sessionId, title };
-    },
-    onSuccess: () => {
-      // Invalidate and refetch sessions
-      queryClient.invalidateQueries({ queryKey: ["user-sessions", USER_ID] });
-      setEditingSession(null);
-      setNewTitle("");
-    },
-  });
+  const { data: sessions, isLoading, error } = useUserSessions(DEMO_USER_ID);
+  const deleteSessionMutation = useDeleteSession(DEMO_USER_ID);
+  const updateSessionMutation = useUpdateSession(DEMO_USER_ID);
 
   const handleNewChat = () => {
     setIsCreatingChat(true);
@@ -141,6 +81,8 @@ export function NavChatHistory() {
         sessionId,
         title: newTitle.trim(),
       });
+      setEditingSession(null);
+      setNewTitle("");
     } catch (error) {
       console.error("Failed to rename session:", error);
       alert("Failed to rename chat. Please try again.");

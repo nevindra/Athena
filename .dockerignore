@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+**/build/
+**/dist/
+**/.next/
+
+# Development files
+**/.env.local
+**/.env.development
+**/.env.test
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Coverage and test files
+coverage/
+.nyc_output
+.jest-cache/
+
+# Cache directories
+.cache/
+**/.cache/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Git
+.git/
+.gitignore
+
+# Docker files
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Include nginx config for Docker build
+!nginx.conf
+
+# Documentation
+README.md
+CHANGELOG.md
+docs/
+
+# Development scripts
+.eslintrc*
+.prettierrc*
+tsconfig.json
+.babelrc*
+webpack.config.js
+vite.config.*
+
+# Biome configuration
+biome.json
+.biome/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3

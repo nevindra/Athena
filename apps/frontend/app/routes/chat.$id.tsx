@@ -135,7 +135,7 @@ export default function Chat({ params }: Route.ComponentProps) {
             msg.attachments && Array.isArray(msg.attachments)
               ? msg.attachments.map((att) => ({
                   type: "image" as const,
-                  url: `http://localhost:3000/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
+                  url: `/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
                   name: att.filename,
                 }))
               : undefined;
