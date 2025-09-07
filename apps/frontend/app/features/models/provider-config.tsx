@@ -1,7 +1,7 @@
+import type { AIConfiguration, AIProvider } from "@athena/shared";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import type { AIProvider, AIConfiguration } from "@athena/shared";
 import { ModelConfig } from "./model-config";
 import type { ProviderType } from "./provider-definitions";
 
@@ -24,17 +24,21 @@ const providerDescriptions = {
     "Connect to any OpenAI-compatible API endpoint with custom settings.",
 };
 
-export function ProviderConfig({ provider, onBack, editingConfig }: ProviderConfigProps) {
+export function ProviderConfig({
+  provider,
+  onBack,
+  editingConfig,
+}: ProviderConfigProps) {
   if (!provider) return null;
 
   const renderConfigForm = () => {
     if (!provider) return null;
-    
+
     return (
-      <ModelConfig 
+      <ModelConfig
         provider={provider as ProviderType}
-        editingConfig={editingConfig} 
-        onSaved={onBack} 
+        editingConfig={editingConfig}
+        onSaved={onBack}
       />
     );
   };

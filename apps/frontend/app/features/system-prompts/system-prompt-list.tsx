@@ -1,9 +1,15 @@
+import { SystemPromptCard } from "@/components/system-prompt/system-prompt-card";
+import { Filter, Plus, Search } from "lucide-react";
 import { useState } from "react";
-import { Search, Filter, Plus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { SystemPromptCard } from "@/components/system-prompt/system-prompt-card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 
 interface SystemPrompt {
   id: string;
@@ -25,17 +31,25 @@ interface SystemPromptListProps {
 
 const categories = ["All", "Structured Output", "Topic Specific", "Custom"];
 
-export function SystemPromptList({ prompts, onEdit, onDelete, onDuplicate, onCreate }: SystemPromptListProps) {
+export function SystemPromptList({
+  prompts,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  onCreate,
+}: SystemPromptListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const filteredPrompts = prompts.filter(prompt => {
-    const matchesSearch = prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         prompt.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         prompt.content.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === "All" || prompt.category === selectedCategory;
-    
+  const filteredPrompts = prompts.filter((prompt) => {
+    const matchesSearch =
+      prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prompt.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prompt.content.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === "All" || prompt.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
@@ -64,7 +78,7 @@ export function SystemPromptList({ prompts, onEdit, onDelete, onDuplicate, onCre
             className="pl-9"
           />
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -85,12 +99,11 @@ export function SystemPromptList({ prompts, onEdit, onDelete, onDuplicate, onCre
       {filteredPrompts.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-muted-foreground mb-4">
-            {searchQuery || selectedCategory !== "All" 
-              ? "No prompts match your search criteria" 
-              : "No system prompts found"
-            }
+            {searchQuery || selectedCategory !== "All"
+              ? "No prompts match your search criteria"
+              : "No system prompts found"}
           </div>
-          {(!searchQuery && selectedCategory === "All") && (
+          {!searchQuery && selectedCategory === "All" && (
             <Button onClick={onCreate} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
               Create your first prompt

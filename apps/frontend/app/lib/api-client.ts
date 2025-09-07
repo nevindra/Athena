@@ -1,5 +1,5 @@
-import ky, { HTTPError } from "ky";
 import type { ApiResponse } from "@athena/shared";
+import ky, { HTTPError } from "ky";
 
 // Create ky instance with base configuration
 export const apiClient = ky.create({
@@ -44,7 +44,7 @@ export const apiClient = ky.create({
         const configError = new HTTPError(
           new Response(null, { status: 0 }),
           new Request(""),
-          {},
+          {}
         );
         return configError;
       },
@@ -61,7 +61,7 @@ export interface ApiClientResponse<T = unknown> {
 
 // Helper function for type-safe API calls
 export const makeApiCall = async <T>(
-  apiCall: () => Promise<ApiResponse<T>>,
+  apiCall: () => Promise<ApiResponse<T>>
 ): Promise<T> => {
   const response = await apiCall();
 

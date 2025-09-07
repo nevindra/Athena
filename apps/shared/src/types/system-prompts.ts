@@ -72,10 +72,13 @@ export interface UpdateSystemPromptRequest {
 }
 
 // System prompt categories
-export type SystemPromptCategory = "Structured Output" | "Topic Specific" | "Custom";
+export type SystemPromptCategory =
+  | "Structured Output"
+  | "Topic Specific"
+  | "Custom";
 
 export const SYSTEM_PROMPT_CATEGORIES: SystemPromptCategory[] = [
   "Structured Output",
-  "Topic Specific", 
-  "Custom"
+  "Topic Specific",
+  "Custom",
 ];

@@ -1,4 +1,4 @@
-import { Bot, Globe, Server, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bot, Globe, Server } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -64,18 +64,15 @@ export function ProviderSelection({
     <div className="space-y-6">
       <div className="space-y-4">
         {onBack && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="gap-2"
-          >
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Models
           </Button>
         )}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Add New Configuration</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Add New Configuration
+          </h1>
           <p className="text-muted-foreground">
             Choose an AI provider to configure your model settings and start
             chatting.

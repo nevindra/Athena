@@ -6,7 +6,10 @@ interface CustomSystemPromptProps {
   onChange: (value: string) => void;
 }
 
-export function CustomSystemPrompt({ value, onChange }: CustomSystemPromptProps) {
+export function CustomSystemPrompt({
+  value,
+  onChange,
+}: CustomSystemPromptProps) {
   return (
     <Card>
       <CardHeader>

@@ -1,12 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { configurationsApi } from "~/services/configurations-api";
-import { queryKeys } from "~/lib/query-client";
 import type {
   AIConfiguration,
   CreateConfigRequest,
-  UpdateConfigRequest,
   TestConnectionRequest,
+  UpdateConfigRequest,
 } from "@athena/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "~/lib/query-client";
+import { configurationsApi } from "~/services/configurations-api";
 
 // Hook to get all configurations
 export function useConfigurations() {
@@ -57,23 +57,23 @@ export function useUpdateConfiguration() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ configId, data }: {
+    mutationFn: ({
+      configId,
+      data,
+    }: {
       configId: string;
       data: UpdateConfigRequest;
     }) => configurationsApi.updateConfiguration(configId, data),
     onSuccess: (updatedConfig: AIConfiguration) => {
       // Update the specific configuration in cache
-      queryClient.setQueryData(
-        queryKeys.byId(updatedConfig.id),
-        updatedConfig
-      );
+      queryClient.setQueryData(queryKeys.byId(updatedConfig.id), updatedConfig);
 
       // Update the configuration in the list
       queryClient.setQueryData<AIConfiguration[]>(
         queryKeys.all(),
         (oldConfigs) => {
           if (!oldConfigs) return [updatedConfig];
-          return oldConfigs.map(config =>
+          return oldConfigs.map((config) =>
             config.id === updatedConfig.id ? updatedConfig : config
           );
         }
@@ -98,7 +98,7 @@ export function useDeleteConfiguration() {
         queryKeys.all(),
         (oldConfigs) => {
           if (!oldConfigs) return [];
-          return oldConfigs.filter(config => config.id !== deletedConfigId);
+          return oldConfigs.filter((config) => config.id !== deletedConfigId);
         }
       );
 
@@ -126,13 +126,16 @@ export function useTestConnection() {
 export function useOptimisticConfigUpdate() {
   const queryClient = useQueryClient();
 
-  const updateOptimistically = (configId: string, updates: Partial<AIConfiguration>) => {
+  const updateOptimistically = (
+    configId: string,
+    updates: Partial<AIConfiguration>
+  ) => {
     // Optimistically update the cache
     queryClient.setQueryData<AIConfiguration[]>(
       queryKeys.all(),
       (oldConfigs) => {
         if (!oldConfigs) return [];
-        return oldConfigs.map(config =>
+        return oldConfigs.map((config) =>
           config.id === configId ? { ...config, ...updates } : config
         );
       }

@@ -1,7 +1,7 @@
-import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { env } from "./env";
+import postgres from "postgres";
 import * as schema from "../db/schema";
+import { env } from "./env";
 
 const connectionString = `postgres://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}`;
 

@@ -1,19 +1,21 @@
-import { eq, and } from "drizzle-orm";
+import type {
+  ApiResponse,
+  CreateSystemPromptRequest,
+  SystemPrompt,
+  SystemPromptCategory,
+  UpdateSystemPromptRequest,
+} from "@athena/shared";
+import { and, eq } from "drizzle-orm";
 import { ulid } from "ulid";
 import { db } from "../config/database";
+import type { NewSystemPrompt, SystemPromptDB } from "../db/schema";
 import { systemPrompts, users } from "../db/schema";
-import type { 
-  SystemPrompt, 
-  CreateSystemPromptRequest, 
-  UpdateSystemPromptRequest,
-  ApiResponse,
-  SystemPromptCategory
-} from "@athena/shared";
-import type { SystemPromptDB, NewSystemPrompt } from "../db/schema";
 
 export class SystemPromptController {
   // Helper method to convert DB system prompt to API system prompt
-  private dbSystemPromptToApiSystemPrompt(dbPrompt: SystemPromptDB): SystemPrompt {
+  private dbSystemPromptToApiSystemPrompt(
+    dbPrompt: SystemPromptDB
+  ): SystemPrompt {
     return {
       id: dbPrompt.id,
       userId: dbPrompt.userId,
@@ -54,7 +56,9 @@ export class SystemPromptController {
         .where(eq(systemPrompts.userId, userId))
         .orderBy(systemPrompts.createdAt);
 
-      const apiPrompts = prompts.map(prompt => this.dbSystemPromptToApiSystemPrompt(prompt));
+      const apiPrompts = prompts.map((prompt) =>
+        this.dbSystemPromptToApiSystemPrompt(prompt)
+      );
 
       return {
         success: true,
@@ -70,16 +74,16 @@ export class SystemPromptController {
   }
 
   // Get a specific system prompt by ID
-  async getSystemPrompt(userId: string, promptId: string): Promise<ApiResponse<SystemPrompt>> {
+  async getSystemPrompt(
+    userId: string,
+    promptId: string
+  ): Promise<ApiResponse<SystemPrompt>> {
     try {
       const prompt = await db
         .select()
         .from(systemPrompts)
         .where(
-          and(
-            eq(systemPrompts.id, promptId),
-            eq(systemPrompts.userId, userId)
-          )
+          and(eq(systemPrompts.id, promptId), eq(systemPrompts.userId, userId))
         )
         .limit(1);
 
@@ -106,7 +110,10 @@ export class SystemPromptController {
   }
 
   // Create a new system prompt
-  async createSystemPrompt(userId: string, promptData: CreateSystemPromptRequest): Promise<ApiResponse<SystemPrompt>> {
+  async createSystemPrompt(
+    userId: string,
+    promptData: CreateSystemPromptRequest
+  ): Promise<ApiResponse<SystemPrompt>> {
     try {
       const newPromptData: NewSystemPrompt = {
         id: ulid(),
@@ -131,7 +138,9 @@ export class SystemPromptController {
         };
       }
 
-      const apiPrompt = this.dbSystemPromptToApiSystemPrompt(insertedPrompts[0]);
+      const apiPrompt = this.dbSystemPromptToApiSystemPrompt(
+        insertedPrompts[0]
+      );
 
       return {
         success: true,
@@ -148,8 +157,8 @@ export class SystemPromptController {
 
   // Update an existing system prompt
   async updateSystemPrompt(
-    userId: string, 
-    promptId: string, 
+    userId: string,
+    promptId: string,
     promptData: UpdateSystemPromptRequest
   ): Promise<ApiResponse<SystemPrompt>> {
     try {
@@ -158,10 +167,7 @@ export class SystemPromptController {
         .select()
         .from(systemPrompts)
         .where(
-          and(
-            eq(systemPrompts.id, promptId),
-            eq(systemPrompts.userId, userId)
-          )
+          and(eq(systemPrompts.id, promptId), eq(systemPrompts.userId, userId))
         )
         .limit(1);
 
@@ -178,20 +184,22 @@ export class SystemPromptController {
       };
 
       if (promptData.title !== undefined) updateData.title = promptData.title;
-      if (promptData.description !== undefined) updateData.description = promptData.description;
-      if (promptData.category !== undefined) updateData.category = promptData.category as SystemPromptCategory;
-      if (promptData.content !== undefined) updateData.content = promptData.content;
-      if (promptData.jsonSchema !== undefined) updateData.jsonSchema = promptData.jsonSchema;
-      if (promptData.jsonDescription !== undefined) updateData.jsonDescription = promptData.jsonDescription;
+      if (promptData.description !== undefined)
+        updateData.description = promptData.description;
+      if (promptData.category !== undefined)
+        updateData.category = promptData.category as SystemPromptCategory;
+      if (promptData.content !== undefined)
+        updateData.content = promptData.content;
+      if (promptData.jsonSchema !== undefined)
+        updateData.jsonSchema = promptData.jsonSchema;
+      if (promptData.jsonDescription !== undefined)
+        updateData.jsonDescription = promptData.jsonDescription;
 
       const updatedPrompts = await db
         .update(systemPrompts)
         .set(updateData)
         .where(
-          and(
-            eq(systemPrompts.id, promptId),
-            eq(systemPrompts.userId, userId)
-          )
+          and(eq(systemPrompts.id, promptId), eq(systemPrompts.userId, userId))
         )
         .returning();
 
@@ -218,15 +226,15 @@ export class SystemPromptController {
   }
 
   // Delete a system prompt
-  async deleteSystemPrompt(userId: string, promptId: string): Promise<ApiResponse<null>> {
+  async deleteSystemPrompt(
+    userId: string,
+    promptId: string
+  ): Promise<ApiResponse<null>> {
     try {
       const deletedPrompts = await db
         .delete(systemPrompts)
         .where(
-          and(
-            eq(systemPrompts.id, promptId),
-            eq(systemPrompts.userId, userId)
-          )
+          and(eq(systemPrompts.id, promptId), eq(systemPrompts.userId, userId))
         )
         .returning({ id: systemPrompts.id });
 

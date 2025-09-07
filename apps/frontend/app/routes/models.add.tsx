@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
 import { AppHeader } from "@/components/navigation/app-header";
 import { ProviderConfig } from "@/features/models/provider-config";
 import { ProviderSelection } from "@/features/models/provider-selection";
-import type { Route } from "./+types/models.add";
 import type { AIProvider } from "@athena/shared";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import type { Route } from "./+types/models.add";
 
 export function meta(): Route.MetaDescriptors {
   return [
@@ -20,7 +20,8 @@ type AIProviderOrNull = AIProvider | null;
 
 export default function ModelsAdd() {
   const navigate = useNavigate();
-  const [selectedProvider, setSelectedProvider] = useState<AIProviderOrNull>(null);
+  const [selectedProvider, setSelectedProvider] =
+    useState<AIProviderOrNull>(null);
   const [step, setStep] = useState<"selection" | "configuration">("selection");
 
   const handleProviderSelect = (provider: AIProviderOrNull) => {
@@ -37,7 +38,6 @@ export default function ModelsAdd() {
     }
   };
 
-
   return (
     <>
       <AppHeader
@@ -49,13 +49,13 @@ export default function ModelsAdd() {
       />
       <div className="flex-1 space-y-4 p-4 md:p-6">
         {step === "selection" && (
-          <ProviderSelection onProviderSelect={handleProviderSelect} onBack={handleBack} />
-        )}
-        {step === "configuration" && selectedProvider && (
-          <ProviderConfig 
-            provider={selectedProvider} 
+          <ProviderSelection
+            onProviderSelect={handleProviderSelect}
             onBack={handleBack}
           />
+        )}
+        {step === "configuration" && selectedProvider && (
+          <ProviderConfig provider={selectedProvider} onBack={handleBack} />
         )}
       </div>
     </>

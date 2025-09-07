@@ -32,11 +32,13 @@ export interface Message {
 export interface ChatRequest {
   messages: Array<{
     role: "user" | "assistant" | "system";
-    content: string | Array<{
-      type: "text" | "image";
-      text?: string;
-      image?: string;
-    }>;
+    content:
+      | string
+      | Array<{
+          type: "text" | "image";
+          text?: string;
+          image?: string;
+        }>;
   }>;
   userId: string;
   configurationId?: string;

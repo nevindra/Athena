@@ -60,4 +60,7 @@ export interface HttpApiConfig extends BaseAIConfig {
 
 export type AIConfiguration = GeminiConfig | OllamaConfig | HttpApiConfig;
 
-export type AIConfigSettings = GeminiConfigSettings | OllamaConfigSettings | HttpApiConfigSettings;
+export type AIConfigSettings =
+  | GeminiConfigSettings
+  | OllamaConfigSettings
+  | HttpApiConfigSettings;

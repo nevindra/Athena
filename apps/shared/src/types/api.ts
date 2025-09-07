@@ -1,4 +1,4 @@
-import type { AIProvider, AIConfiguration } from "./ai-config";
+import type { AIConfiguration, AIProvider } from "./ai-config";
 
 export interface ApiResponse<T = any> {
   success: boolean;

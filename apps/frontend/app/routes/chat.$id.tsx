@@ -1,17 +1,18 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router";
 import { AppHeader } from "@/components/navigation/app-header";
-import { EnhancedChatInput } from "~/features/welcome/enhanced-chat-input";
+import { Button } from "@/components/ui/button";
+import type { AIConfiguration } from "@athena/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { Message } from "~/features/chat/message";
+import { ChatHistorySidebar } from "~/features/chat/chat-history-sidebar";
+import { EnhancedChatInput } from "~/features/chat-input/enhanced-chat-input";
 import {
-  useSession,
   useAddMessage,
   useChatCompletion,
+  useSession,
 } from "~/hooks/use-sessions";
-import type { Route } from "./+types/chat.$id";
-import type { AIConfiguration } from "@athena/shared";
-import { Button } from "@/components/ui/button";
 import { useSystemPromptStore } from "~/stores/system-prompt-store";
+import type { Route } from "./+types/chat.$id";
 
 export function meta({ params }: Route.MetaArgs) {
   return [
@@ -47,8 +48,9 @@ export default function Chat({ params }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(
-    location.state?.selectedConfig || null,
+    location.state?.selectedConfig || null
   );
   // Use system prompt ID from store instead of local state
   const { selectedSystemPromptId } = useSystemPromptStore();
@@ -134,10 +136,10 @@ export default function Chat({ params }: Route.ComponentProps) {
           const attachments =
             msg.attachments && Array.isArray(msg.attachments)
               ? msg.attachments.map((att) => ({
-                  type: "image" as const,
-                  url: `/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
-                  name: att.filename,
-                }))
+                type: "image" as const,
+                url: `/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
+                name: att.filename,
+              }))
               : undefined;
 
           return {
@@ -162,6 +164,7 @@ export default function Chat({ params }: Route.ComponentProps) {
   const handleAIResponse = async (
     currentMessages: Message[],
     files?: File[],
+    replaceLastAssistantMessage = false
   ) => {
     if (!selectedConfig) return;
 
@@ -186,7 +189,19 @@ export default function Chat({ params }: Route.ComponentProps) {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, aiMessage]);
+      if (replaceLastAssistantMessage) {
+        setMessages((prev) => {
+          const lastMessageIndex = prev.length - 1;
+          if (lastMessageIndex >= 0 && prev[lastMessageIndex].role === "assistant") {
+            const newMessages = [...prev];
+            newMessages[lastMessageIndex] = aiMessage;
+            return newMessages;
+          }
+          return [...prev, aiMessage];
+        });
+      } else {
+        setMessages((prev) => [...prev, aiMessage]);
+      }
     } catch (error) {
       console.error("Failed to get AI response:", error);
 
@@ -196,10 +211,35 @@ export default function Chat({ params }: Route.ComponentProps) {
         role: "assistant",
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      
+      if (replaceLastAssistantMessage) {
+        setMessages((prev) => {
+          const lastMessageIndex = prev.length - 1;
+          if (lastMessageIndex >= 0 && prev[lastMessageIndex].role === "assistant") {
+            const newMessages = [...prev];
+            newMessages[lastMessageIndex] = errorMessage;
+            return newMessages;
+          }
+          return [...prev, errorMessage];
+        });
+      } else {
+        setMessages((prev) => [...prev, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefreshMessage = (messageId: string) => {
+    // Find the message and regenerate response up to that point
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1 || messages[messageIndex].role !== "assistant") return;
+
+    // Get all messages up to but excluding the assistant message to be refreshed
+    const contextMessages = messages.slice(0, messageIndex);
+    
+    // Regenerate the response and replace the last assistant message
+    handleAIResponse(contextMessages, undefined, true);
   };
 
   const handleModelChange = (_configId: string, config: AIConfiguration) => {
@@ -221,6 +261,15 @@ export default function Chat({ params }: Route.ComponentProps) {
         behavior: "smooth",
       });
     }
+  };
+
+  const handleHistoryToggle = () => {
+    setIsHistoryOpen(!isHistoryOpen);
+  };
+
+  const handleSelectSession = (session: any) => {
+    navigate(`/chat/${session.id}`);
+    setIsHistoryOpen(false); // Close sidebar when selecting a session
   };
 
   const handleNewMessage = async (message: string, files?: File[]) => {
@@ -341,74 +390,89 @@ export default function Chat({ params }: Route.ComponentProps) {
             isCurrentPage: true,
           },
         ]}
+        showHistoryToggle={true}
+        onHistoryToggle={handleHistoryToggle}
+        isHistoryOpen={isHistoryOpen}
       />
-      <div className="flex-1 flex flex-col">
-        {/* Messages Container */}
-        <div
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto pb-24"
-          style={{
-            scrollBehavior: "auto",
-          }}
-        >
-          <div className="max-w-4xl mx-auto px-4 py-8">
-            {/* Messages */}
-            <div className="space-y-6">
-              {messages.map((message) => (
-                <Message
-                  key={message.id}
-                  id={message.id}
-                  content={message.content}
-                  role={message.role}
-                  timestamp={message.timestamp}
-                  attachments={message.attachments}
-                />
-              ))}
+      <div className="flex h-full min-h-0">
+        {/* Main Chat Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Messages Container */}
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto pb-24"
+            style={{
+              scrollBehavior: "auto",
+            }}
+          >
+            <div className="max-w-4xl mx-auto px-4 py-8">
+              {/* Messages */}
+              <div className="space-y-6">
+                {messages.map((message) => (
+                  <Message
+                    key={message.id}
+                    id={message.id}
+                    content={message.content}
+                    role={message.role}
+                    timestamp={message.timestamp}
+                    attachments={message.attachments}
+                    onRefresh={message.role === "assistant" ? () => handleRefreshMessage(message.id) : undefined}
+                  />
+                ))}
 
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted p-4 rounded-2xl">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-                        <div
-                          className="w-2 h-2 bg-current rounded-full animate-pulse"
-                          style={{ animationDelay: "0.2s" }}
-                        />
-                        <div
-                          className="w-2 h-2 bg-current rounded-full animate-pulse"
-                          style={{ animationDelay: "0.4s" }}
-                        />
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted p-4 rounded-2xl">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
+                          <div
+                            className="w-2 h-2 bg-current rounded-full animate-pulse"
+                            style={{ animationDelay: "0.2s" }}
+                          />
+                          <div
+                            className="w-2 h-2 bg-current rounded-full animate-pulse"
+                            style={{ animationDelay: "0.4s" }}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          Thinking...
+                        </span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
-                        Thinking...
-                      </span>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Chat Input Container - Separate bottom container */}
+          <div className="sticky bottom-0 w-full">
+            <div className="max-w-4xl mx-auto px-4 py-4">
+              <EnhancedChatInput
+                onSubmit={handleNewMessage}
+                onModelChange={handleModelChange}
+                onSettingsClick={handleSettingsClick}
+                onSystemPromptSettingsClick={handleSystemPromptSettingsClick}
+                onScrollToBottom={
+                  showScrollToBottom ? handleScrollToBottom : undefined
+                }
+                showScrollButton={showScrollToBottom}
+                placeholder="Type your message here..."
+                disabled={isLoading}
+                selectedModel={selectedConfig?.id}
+              />
             </div>
           </div>
         </div>
 
-        {/* Chat Input Container - Separate bottom container */}
-        <div className="sticky bottom-0 w-full">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <EnhancedChatInput
-              onSubmit={handleNewMessage}
-              onModelChange={handleModelChange}
-              onSettingsClick={handleSettingsClick}
-              onSystemPromptSettingsClick={handleSystemPromptSettingsClick}
-              onScrollToBottom={
-                showScrollToBottom ? handleScrollToBottom : undefined
-              }
-              showScrollButton={showScrollToBottom}
-              placeholder="Type your message here..."
-              disabled={isLoading}
-              selectedModel={selectedConfig?.id}
-            />
-          </div>
-        </div>
+        {/* Chat History Sidebar */}
+        <ChatHistorySidebar 
+          isOpen={isHistoryOpen}
+          onClose={() => setIsHistoryOpen(false)}
+          onSelectSession={handleSelectSession}
+          currentSessionId={params.id}
+        />
       </div>
     </>
   );

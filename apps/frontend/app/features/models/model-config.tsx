@@ -1,19 +1,22 @@
+import type { AIConfiguration } from "@athena/shared";
 import {
   Eye,
   EyeOff,
+  Loader2,
   Plus,
+  RefreshCw,
+  Save,
+  Server,
   TestTube,
   Trash2,
-  Save,
-  Loader2,
-  RefreshCw,
-  Server,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Alert, AlertDescription } from "~/components/ui/alert";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ModelParams } from "~/components/models/model-params";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -25,23 +28,18 @@ import {
 } from "~/components/ui/select";
 import { Slider } from "~/components/ui/slider";
 import { Textarea } from "~/components/ui/textarea";
-import { Checkbox } from "~/components/ui/checkbox";
 import {
   useCreateConfiguration,
-  useUpdateConfiguration,
   useTestConnection,
+  useUpdateConfiguration,
 } from "~/hooks/use-configurations";
-import type { AIConfiguration } from "@athena/shared";
-import { toast } from "sonner";
-import { ModelParams } from "~/components/models/model-params";
 import {
-  type ProviderType,
   type FieldDefinition,
-  type ConditionalLogic,
-  type SliderOptions,
+  type ProviderType,
   type SelectOption,
+  type SliderOptions,
   getProviderDefinition,
-  prepareSettingsForApi,
+  prepareSettingsForApi
 } from "./provider-definitions";
 
 interface ModelConfigProps {
@@ -50,9 +48,15 @@ interface ModelConfigProps {
   onSaved?: () => void;
 }
 
-export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigProps) {
+export function ModelConfig({
+  provider,
+  editingConfig,
+  onSaved,
+}: ModelConfigProps) {
   const providerDef = getProviderDefinition(provider);
-  const [config, setConfig] = useState<Record<string, any>>(providerDef.defaultValues);
+  const [config, setConfig] = useState<Record<string, any>>(
+    providerDef.defaultValues
+  );
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
   // State for HTTP API specific features
@@ -130,14 +134,9 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
   // HTTP API specific: Remove header
   const removeHeader = (key: string) => {
     setConfig((prev) => {
-      const { [key]: removed, ...rest } = prev.headers;
+      const { [key]: _removed, ...rest } = prev.headers;
       return { ...prev, headers: rest };
     });
-  };
-
-  // HTTP API specific: Select common endpoint
-  const selectCommonEndpoint = (url: string) => {
-    setConfig((prev) => ({ ...prev, baseUrl: url }));
   };
 
   // Ollama specific: Fetch available models
@@ -148,7 +147,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
       setAvailableModels(["llama3.2:3b", "mistral:7b", "codellama:7b"]);
     } catch (error) {
-      console.error("Failed to fetch models");
+      console.error("Failed to fetch models:", error);
     } finally {
       setIsLoadingModels(false);
     }
@@ -159,7 +158,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
     // Check required fields
     for (const requiredField of providerDef.validation.required) {
       if (!config[requiredField]?.toString().trim()) {
-        const field = providerDef.fields.find(f => f.key === requiredField);
+        const field = providerDef.fields.find((f) => f.key === requiredField);
         return `Please enter ${field?.label || requiredField}`;
       }
     }
@@ -210,6 +209,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
       // Call the onSaved callback to navigate back
       onSaved?.();
     } catch (error) {
+      console.error("Failed to save configuration:", error);
       toast.error(
         `Failed to ${editingConfig ? "update" : "save"} configuration`
       );
@@ -220,7 +220,10 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
   const handleTest = async () => {
     const validationError = validateForm();
     if (validationError) {
-      toast.error(validationError.replace("Please enter", "Please enter your") + " to test connection");
+      toast.error(
+        validationError.replace("Please enter", "Please enter your") +
+        " to test connection"
+      );
       return;
     }
 
@@ -233,18 +236,17 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
 
       if (result.success) {
         toast.success(
-          `Connection successful! ${result.model ? `Model: ${result.model}` : ""} ${
-            result.latency ? `(${result.latency}ms)` : ""
+          `Connection successful! ${result.model ? `Model: ${result.model}` : ""} ${result.latency ? `(${result.latency}ms)` : ""
           }`
         );
       } else {
         toast.error(result.error || "Connection test failed");
       }
     } catch (error) {
+      console.error("Connection test failed:", error);
       toast.error("Failed to test connection");
     }
   };
-
 
   // Render individual field
   const renderField = (field: FieldDefinition) => {
@@ -268,7 +270,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
               onChange={(e) => handleFieldChange(field.key, e.target.value)}
             />
             {field.description && (
-              <p 
+              <p
                 className="text-sm text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: field.description }}
               />
@@ -308,7 +310,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
               )}
             </div>
             {field.description && (
-              <p 
+              <p
                 className="text-sm text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: field.description }}
               />
@@ -340,31 +342,35 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
             </div>
             <Select
               value={value || ""}
-              onValueChange={(newValue) => handleFieldChange(field.key, newValue)}
+              onValueChange={(newValue) =>
+                handleFieldChange(field.key, newValue)
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder={field.placeholder} />
               </SelectTrigger>
               <SelectContent>
                 {/* Show available models for Ollama */}
-                {provider === "ollama" && field.key === "model" && availableModels.length > 0 && (
-                  <>
-                    {availableModels.map((model) => (
-                      <SelectItem key={`available-${model}`} value={model}>
-                        <div className="flex items-center">
-                          <Badge variant="secondary" className="mr-2 text-xs">
-                            Available
-                          </Badge>
-                          {model}
-                        </div>
-                      </SelectItem>
-                    ))}
-                    <div className="px-2 py-1">
-                      <div className="border-t my-1" />
-                    </div>
-                  </>
-                )}
-                
+                {provider === "ollama" &&
+                  field.key === "model" &&
+                  availableModels.length > 0 && (
+                    <>
+                      {availableModels.map((model) => (
+                        <SelectItem key={`available-${model}`} value={model}>
+                          <div className="flex items-center">
+                            <Badge variant="secondary" className="mr-2 text-xs">
+                              Available
+                            </Badge>
+                            {model}
+                          </div>
+                        </SelectItem>
+                      ))}
+                      <div className="px-2 py-1">
+                        <div className="border-t my-1" />
+                      </div>
+                    </>
+                  )}
+
                 {options?.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center">
@@ -380,7 +386,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
               </SelectContent>
             </Select>
             {field.description && (
-              <p 
+              <p
                 className="text-sm text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: field.description }}
               />
@@ -398,14 +404,18 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
             </div>
             <Slider
               value={[value || sliderOptions.min]}
-              onValueChange={([newValue]) => handleFieldChange(field.key, newValue)}
+              onValueChange={([newValue]) =>
+                handleFieldChange(field.key, newValue)
+              }
               max={sliderOptions.max}
               min={sliderOptions.min}
               step={sliderOptions.step}
               className="w-full"
             />
             {field.description && (
-              <p className="text-xs text-muted-foreground">{field.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {field.description}
+              </p>
             )}
           </div>
         );
@@ -423,7 +433,9 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
               onChange={(e) => handleFieldChange(field.key, e.target.value)}
             />
             {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {field.description}
+              </p>
             )}
           </div>
         );
@@ -434,11 +446,15 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
             <Checkbox
               id={field.key}
               checked={value || false}
-              onCheckedChange={(checked) => handleFieldChange(field.key, checked)}
+              onCheckedChange={(checked) =>
+                handleFieldChange(field.key, checked)
+              }
             />
             <Label htmlFor={field.key}>{field.label}</Label>
             {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {field.description}
+              </p>
             )}
           </div>
         );
@@ -495,7 +511,8 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
                 ))}
                 {Object.keys(value || {}).length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No custom headers added yet. Add authentication headers above.
+                    No custom headers added yet. Add authentication headers
+                    above.
                   </p>
                 )}
               </div>
@@ -561,14 +578,19 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
     return validateForm() === null;
   };
 
-  const isLoading = createConfiguration.isPending || updateConfiguration.isPending;
+  const isLoading =
+    createConfiguration.isPending || updateConfiguration.isPending;
 
   return (
     <div className="space-y-6">
       {/* Basic Configuration Fields */}
       <div className="space-y-4">
         {providerDef.fields
-          .filter(field => field.type !== "slider" && !(field.type === "select" && field.key === "streamResponse"))
+          .filter(
+            (field) =>
+              field.type !== "slider" &&
+              !(field.type === "select" && field.key === "streamResponse")
+          )
           .map(renderField)}
       </div>
 
@@ -596,10 +618,7 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
           )}
           {testConnection.isPending ? "Testing..." : "Test Connection"}
         </Button>
-        <Button
-          onClick={handleSave}
-          disabled={!isFormValid() || isLoading}
-        >
+        <Button onClick={handleSave} disabled={!isFormValid() || isLoading}>
           {isLoading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -610,8 +629,8 @@ export function ModelConfig({ provider, editingConfig, onSaved }: ModelConfigPro
               ? "Updating..."
               : "Saving..."
             : editingConfig
-            ? "Update Configuration"
-            : "Save Configuration"}
+              ? "Update Configuration"
+              : "Save Configuration"}
         </Button>
       </div>
     </div>

@@ -37,15 +37,15 @@ export const queryKeys = {
   // Base keys for configurations
   configurations: ["configurations"] as const,
   configuration: (id: string) => ["configurations", id] as const,
-  
+
   // Base keys for system prompts
   systemPrompts: ["systemPrompts"] as const,
   systemPrompt: (id: string) => ["systemPrompts", id] as const,
-  
+
   // Configuration query keys
   all: () => [...queryKeys.configurations] as const,
   byId: (id: string) => [...queryKeys.configuration(id)] as const,
-  
+
   // System prompt query keys
   allSystemPrompts: () => [...queryKeys.systemPrompts] as const,
   systemPromptById: (id: string) => [...queryKeys.systemPrompt(id)] as const,

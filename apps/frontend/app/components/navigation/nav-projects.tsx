@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  MoreHorizontal,
-  Trash2,
-  Edit3,
-  Plus,
-} from "lucide-react";
+import { Edit3, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
-import { Button } from "~/components/ui/button";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -25,8 +20,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar";
-import { useState } from "react";
-import { useUserSessions, useDeleteSession, useUpdateSession } from "~/hooks/use-sessions";
+import {
+  useDeleteSession,
+  useUpdateSession,
+  useUserSessions,
+} from "~/hooks/use-sessions";
 import { DEMO_USER_ID } from "~/services/sessions-api";
 
 interface ChatSession {
@@ -52,10 +50,13 @@ export function NavChatHistory() {
     window.location.href = "/";
   };
 
-  const handleDeleteSession = async (sessionId: string, event: React.MouseEvent) => {
+  const handleDeleteSession = async (
+    sessionId: string,
+    event: React.MouseEvent
+  ) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (window.confirm("Are you sure you want to delete this chat?")) {
       try {
         await deleteSessionMutation.mutateAsync(sessionId);
@@ -75,7 +76,7 @@ export function NavChatHistory() {
 
   const handleSaveRename = async (sessionId: string) => {
     if (!newTitle.trim()) return;
-    
+
     try {
       await updateSessionMutation.mutateAsync({
         sessionId,
@@ -94,7 +95,6 @@ export function NavChatHistory() {
     setNewTitle("");
   };
 
-
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Chat History</SidebarGroupLabel>
@@ -111,7 +111,9 @@ export function NavChatHistory() {
         {isLoading && (
           <SidebarMenuItem>
             <SidebarMenuButton disabled>
-              <span className="text-sidebar-foreground/50 text-sm">Loading...</span>
+              <span className="text-sidebar-foreground/50 text-sm">
+                Loading...
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
@@ -148,7 +150,9 @@ export function NavChatHistory() {
             ) : (
               <SidebarMenuButton asChild>
                 <a href={`/chat/${session.id}`} className="block">
-                  <span className="truncate text-sm">{session.title || "Untitled Chat"}</span>
+                  <span className="truncate text-sm">
+                    {session.title || "Untitled Chat"}
+                  </span>
                 </a>
               </SidebarMenuButton>
             )}
@@ -160,34 +164,34 @@ export function NavChatHistory() {
                     <span className="sr-only">More</span>
                   </SidebarMenuAction>
                 </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-48 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}
-              >
-                <DropdownMenuItem asChild>
-                  <a href={`/chat/${session.id}`}>
-                    <span>Open Chat</span>
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => handleStartRename(session, e)}
-                  disabled={updateSessionMutation.isPending}
+                <DropdownMenuContent
+                  className="w-48 rounded-lg"
+                  side={isMobile ? "bottom" : "right"}
+                  align={isMobile ? "end" : "start"}
                 >
-                  <Edit3 className="h-4 w-4 text-muted-foreground" />
-                  <span>Rename</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={(e) => handleDeleteSession(session.id, e)}
-                  disabled={deleteSessionMutation.isPending}
-                >
-                  <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  <span>Delete Chat</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem asChild>
+                    <a href={`/chat/${session.id}`}>
+                      <span>Open Chat</span>
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => handleStartRename(session, e)}
+                    disabled={updateSessionMutation.isPending}
+                  >
+                    <Edit3 className="h-4 w-4 text-muted-foreground" />
+                    <span>Rename</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => handleDeleteSession(session.id, e)}
+                    disabled={deleteSessionMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    <span>Delete Chat</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </SidebarMenuItem>
         ))}
@@ -196,7 +200,9 @@ export function NavChatHistory() {
         {!isLoading && !error && (!sessions || sessions.length === 0) && (
           <SidebarMenuItem>
             <SidebarMenuButton disabled>
-              <span className="text-sidebar-foreground/50 text-sm">No chats yet</span>
+              <span className="text-sidebar-foreground/50 text-sm">
+                No chats yet
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}

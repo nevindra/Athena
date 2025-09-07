@@ -1,20 +1,21 @@
-import { eq, and } from "drizzle-orm";
+import type {
+  AIConfiguration,
+  ApiResponse,
+  CreateConfigRequest,
+  TestConnectionRequest,
+  UpdateConfigRequest
+} from "@athena/shared";
+import { and, eq } from "drizzle-orm";
 import { ulid } from "ulid";
 import { db } from "../config/database";
 import { aiConfigurations, users } from "../db/schema";
 import { encryptionService } from "../services/encryptionService";
-import type { 
-  AIConfiguration, 
-  CreateConfigRequest, 
-  UpdateConfigRequest,
-  TestConnectionRequest,
-  ApiResponse,
-  AIProvider
-} from "@athena/shared";
 
 export class ConfigurationController {
   // Get all configurations for a user
-  async getConfigurations(userId: string): Promise<ApiResponse<AIConfiguration[]>> {
+  async getConfigurations(
+    userId: string
+  ): Promise<ApiResponse<AIConfiguration[]>> {
     try {
       const configs = await db
         .select()
@@ -25,10 +26,11 @@ export class ConfigurationController {
       const decryptedConfigs: AIConfiguration[] = [];
 
       for (const config of configs) {
-        const decryptedSettings = await encryptionService.decryptSensitiveFields(
-          config.provider,
-          config.settings
-        );
+        const decryptedSettings =
+          await encryptionService.decryptSensitiveFields(
+            config.provider,
+            config.settings
+          );
 
         decryptedConfigs.push({
           id: config.id,
@@ -56,7 +58,10 @@ export class ConfigurationController {
   }
 
   // Get a specific configuration by ID
-  async getConfiguration(userId: string, configId: string): Promise<ApiResponse<AIConfiguration>> {
+  async getConfiguration(
+    userId: string,
+    configId: string
+  ): Promise<ApiResponse<AIConfiguration>> {
     try {
       const config = await db
         .select()
@@ -106,7 +111,10 @@ export class ConfigurationController {
   }
 
   // Create a new configuration
-  async createConfiguration(userId: string, request: CreateConfigRequest): Promise<ApiResponse<AIConfiguration>> {
+  async createConfiguration(
+    userId: string,
+    request: CreateConfigRequest
+  ): Promise<ApiResponse<AIConfiguration>> {
     try {
       // Encrypt sensitive fields
       const encryptedSettings = await encryptionService.encryptSensitiveFields(
@@ -149,8 +157,8 @@ export class ConfigurationController {
 
   // Update an existing configuration
   async updateConfiguration(
-    userId: string, 
-    configId: string, 
+    userId: string,
+    configId: string,
     request: UpdateConfigRequest
   ): Promise<ApiResponse<AIConfiguration>> {
     try {
@@ -174,7 +182,7 @@ export class ConfigurationController {
       }
 
       const existingConfig = existing[0];
-      
+
       // Prepare update data
       const updateData: any = {
         updatedAt: new Date(),
@@ -209,7 +217,7 @@ export class ConfigurationController {
 
       // Get the updated configuration
       const getResult = await this.getConfiguration(userId, configId);
-      
+
       return {
         success: true,
         data: getResult.data,
@@ -225,7 +233,10 @@ export class ConfigurationController {
   }
 
   // Delete a configuration
-  async deleteConfiguration(userId: string, configId: string): Promise<ApiResponse<null>> {
+  async deleteConfiguration(
+    userId: string,
+    configId: string
+  ): Promise<ApiResponse<null>> {
     try {
       // First, check if the configuration exists and belongs to the user
       const existingConfig = await db
@@ -242,7 +253,8 @@ export class ConfigurationController {
       if (existingConfig.length === 0) {
         return {
           success: false,
-          error: "Configuration not found or you don't have permission to delete it",
+          error:
+            "Configuration not found or you don't have permission to delete it",
         };
       }
 
@@ -263,26 +275,33 @@ export class ConfigurationController {
       };
     } catch (error) {
       console.error("Failed to delete configuration:", error);
-      
+
       // Provide more specific error messages based on error type
       if (error instanceof Error) {
         const errorMessage = error.message || "";
-        
+
         // Check for common database constraint errors
-        if (errorMessage.includes('foreign key constraint') || errorMessage.includes('violates foreign key')) {
+        if (
+          errorMessage.includes("foreign key constraint") ||
+          errorMessage.includes("violates foreign key")
+        ) {
           return {
             success: false,
-            error: "Cannot delete configuration: it is being used by existing chat sessions",
+            error:
+              "Cannot delete configuration: it is being used by existing chat sessions",
           };
         }
-        
-        if (errorMessage.includes('permission denied') || errorMessage.includes('access denied')) {
+
+        if (
+          errorMessage.includes("permission denied") ||
+          errorMessage.includes("access denied")
+        ) {
           return {
             success: false,
             error: "Permission denied: you cannot delete this configuration",
           };
         }
-        
+
         return {
           success: false,
           error: `Failed to delete configuration: ${errorMessage}`,
@@ -297,18 +316,22 @@ export class ConfigurationController {
   }
 
   // Test connection for a configuration
-  async testConnection(request: TestConnectionRequest): Promise<ApiResponse<{
-    success: boolean;
-    latency?: number;
-    model?: string;
-    error?: string;
-  }>> {
+  async testConnection(request: TestConnectionRequest): Promise<
+    ApiResponse<{
+      success: boolean;
+      latency?: number;
+      model?: string;
+      error?: string;
+    }>
+  > {
     try {
       // This is a mock implementation - in a real app, you would make actual API calls
       const { provider, settings } = request;
 
       // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 1000 + Math.random() * 1000)
+      );
 
       // Mock success/failure based on provider
       const success = Math.random() > 0.2; // 80% success rate for demo
@@ -325,7 +348,12 @@ export class ConfigurationController {
       }
 
       // Mock different responses based on provider
-      let mockData: { success: boolean; latency?: number; model?: string; error?: string } = { success: true };
+      let mockData: {
+        success: boolean;
+        latency?: number;
+        model?: string;
+        error?: string;
+      } = { success: true };
 
       switch (provider) {
         case "gemini":
@@ -335,7 +363,7 @@ export class ConfigurationController {
             model: settings.model || "gemini-1.5-pro",
           };
           break;
-        
+
         case "ollama":
           mockData = {
             success: true,
@@ -343,7 +371,7 @@ export class ConfigurationController {
             model: settings.model || "llama3.2:3b",
           };
           break;
-        
+
         case "http-api":
           mockData = {
             success: true,

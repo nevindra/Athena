@@ -1,38 +1,38 @@
+import type { AIConfiguration } from "@athena/shared";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { motion } from "framer-motion";
 import { Card } from "~/components/ui/card";
-import { EnhancedChatInput } from "./enhanced-chat-input";
+import { EnhancedChatInput } from "~/features/chat-input/enhanced-chat-input";
 import { useCreateSession } from "~/hooks/use-sessions";
-import type { AIConfiguration, SystemPrompt } from "@athena/shared";
 
-const EXAMPLE_PROMPTS = [
+const TASK_SUGGESTIONS = [
   {
-    title: "Creative Writing",
-    prompt:
-      "Help me write a short story about a time traveler who gets stuck in the past",
+    icon: "📄",
+    title: "Answer RFP documentation",
+    description: "Help with proposal and documentation tasks"
   },
   {
-    title: "Learning",
-    prompt:
-      "Explain quantum physics in simple terms that a high school student would understand",
+    icon: "📊",
+    title: "Conduct a competitor analysis",
+    description: "Research and analyze market competition"
   },
   {
-    title: "Problem Solving",
-    prompt:
-      "I'm planning a weekend trip for 4 people. Can you suggest a budget-friendly itinerary?",
-  },
-  {
-    title: "Coding Help",
-    prompt:
-      "Review this React component and suggest improvements for performance and readability",
+    icon: "💬",
+    title: "Provide feedback on communication",
+    description: "Review and improve written communications"
   },
 ];
 
-export function WelcomeScreen() {
+interface WelcomeScreenProps {
+  isSidebarOpen?: boolean;
+}
+
+export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(
-    null,
+    null
   );
   const createSession = useCreateSession();
 
@@ -80,54 +80,106 @@ export function WelcomeScreen() {
     navigate("/system-prompts");
   };
 
-  const handleExampleClick = (prompt: string) => {
-    handleSubmit(prompt);
+  const handleTaskClick = (title: string) => {
+    handleSubmit(title);
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <motion.div 
+      className="flex-1 flex flex-col min-h-0"
+      animate={{ 
+        marginLeft: isSidebarOpen ? 0 : 0,
+        width: isSidebarOpen ? "auto" : "100%"
+      }}
+      transition={{ 
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+        mass: 0.8
+      }}
+    >
       {/* Main content area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
-        <div className="max-w-4xl w-full space-y-12">
+      <motion.div 
+        className="flex-1 flex flex-col items-center justify-center px-4 py-12"
+        animate={{ 
+          scale: isSidebarOpen ? 0.95 : 1,
+          opacity: isSidebarOpen ? 0.8 : 1
+        }}
+        transition={{ 
+          type: "spring",
+          stiffness: 400,
+          damping: 25,
+          mass: 0.6
+        }}
+      >
+        <motion.div 
+          className="max-w-2xl w-full space-y-8"
+          animate={{ 
+            x: isSidebarOpen ? 20 : 0
+          }}
+          transition={{ 
+            type: "spring",
+            stiffness: 300,
+            damping: 30
+          }}
+        >
           {/* Header section */}
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg
-                className="w-8 h-8 text-primary-foreground"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <h1 className="text-4xl font-semibold text-foreground">
-              How can we help you today?
+            <h1 className="text-3xl font-medium text-foreground">
+              Hi, there 👋
             </h1>
+            <p className="text-muted-foreground text-lg">
+              Tell us what you need, and we'll handle the rest.
+            </p>
           </div>
 
-          {/* Example prompts grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-            {EXAMPLE_PROMPTS.map((example, index) => (
-              <Card
-                key={index}
-                className="p-4 cursor-pointer transition-all hover:bg-accent/50 border-border/50"
-                onClick={() => handleExampleClick(example.prompt)}
-              >
-                <h3 className="font-medium text-foreground mb-2">
-                  {example.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {example.prompt}
-                </p>
-              </Card>
-            ))}
+          {/* Assistant card */}
+          <div className="mx-auto max-w-md">
+            <Card className="p-4 bg-slate-900 border-slate-700 text-white">
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-medium text-white">S</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <span className="font-medium text-white">Sam Lee</span>
+                    <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                      Data Assistant
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Designed to help manage sales processes and maximize customer engagement.
+                  </p>
+                </div>
+              </div>
+            </Card>
           </div>
-        </div>
-      </div>
+
+          {/* Task suggestions */}
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium text-muted-foreground">Tasks</span>
+              <button className="text-sm text-blue-600 hover:text-blue-700">View All</button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {TASK_SUGGESTIONS.map((task, index) => (
+                <Card
+                  key={index}
+                  className="p-3 cursor-pointer hover:bg-accent/50 transition-colors group"
+                  onClick={() => handleTaskClick(task.title)}
+                >
+                  <div className="text-center space-y-2">
+                    <span className="text-lg block">{task.icon}</span>
+                    <div className="text-xs font-medium text-foreground group-hover:text-blue-600 leading-tight">
+                      {task.title}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
 
       {/* Input area - fixed at bottom */}
       <div className=" bg-background/80 backdrop-blur-sm">
@@ -135,18 +187,15 @@ export function WelcomeScreen() {
           <EnhancedChatInput
             onSubmit={handleSubmit}
             onModelChange={handleModelChange}
-            onSystemPromptChange={(promptId, prompt) => {
-              // Handle system prompt selection - could be passed to session creation
-            }}
             onSettingsClick={handleSettingsClick}
             onSystemPromptSettingsClick={handleSystemPromptSettingsClick}
-            placeholder="Message..."
+            placeholder="Ask me anything..."
             disabled={isLoading}
             autoFocus
             selectedModel={selectedConfig?.id}
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

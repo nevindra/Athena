@@ -1,10 +1,6 @@
+import type { CreateSessionRequest } from "@athena/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sessionsApi } from "~/services/sessions-api";
-import type {
-  Session,
-  Message,
-  CreateSessionRequest,
-} from "@athena/shared";
 
 export function useUserSessions(userId: string) {
   return useQuery({
@@ -16,13 +12,15 @@ export function useUserSessions(userId: string) {
 
 export function useCreateSession() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (request: CreateSessionRequest) =>
       sessionsApi.createSession(request),
     onSuccess: (data) => {
       // Invalidate sessions query to refresh the sidebar
-      queryClient.invalidateQueries({ queryKey: ["user-sessions", data.userId] });
+      queryClient.invalidateQueries({
+        queryKey: ["user-sessions", data.userId],
+      });
     },
   });
 }
@@ -37,10 +35,10 @@ export function useSession(sessionId: string) {
 
 export function useAddMessage() {
   return useMutation({
-    mutationFn: (params: { 
-      sessionId: string; 
-      message: { role: "user" | "assistant" | "system"; content: string }; 
-      files?: File[] 
+    mutationFn: (params: {
+      sessionId: string;
+      message: { role: "user" | "assistant" | "system"; content: string };
+      files?: File[];
     }) => sessionsApi.addMessage(params),
   });
 }
@@ -63,7 +61,7 @@ export function useChatCompletion() {
 
 export function useDeleteSession(userId: string) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: (sessionId: string) => sessionsApi.deleteSession(sessionId),
     onSuccess: () => {
@@ -74,9 +72,9 @@ export function useDeleteSession(userId: string) {
 
 export function useUpdateSession(userId: string) {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ sessionId, title }: { sessionId: string; title: string }) => 
+    mutationFn: ({ sessionId, title }: { sessionId: string; title: string }) =>
       sessionsApi.updateSession(sessionId, { title }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-sessions", userId] });

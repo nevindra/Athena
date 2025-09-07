@@ -1,9 +1,13 @@
-import { db } from "../db";
-import { chatSessions, chatMessages, type MessageAttachment } from "../db/schema";
-import { eq, desc } from "drizzle-orm";
-import { ulid } from "ulid";
-import { writeFile, mkdir } from "node:fs/promises";
+import { desc, eq } from "drizzle-orm";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { ulid } from "ulid";
+import { db } from "../db";
+import {
+  type MessageAttachment,
+  chatMessages,
+  chatSessions,
+} from "../db/schema";
 
 export interface CreateSessionRequest {
   userId: string;
@@ -22,11 +26,14 @@ export async function handleCreateSession(request: CreateSessionRequest) {
   const { userId, configurationId, initialMessage, title } = request;
 
   // Create the session
-  const [session] = await db.insert(chatSessions).values({
-    userId,
-    configurationId,
-    title: title || generateSessionTitle(initialMessage),
-  }).returning();
+  const [session] = await db
+    .insert(chatSessions)
+    .values({
+      userId,
+      configurationId,
+      title: title || generateSessionTitle(initialMessage),
+    })
+    .returning();
 
   // Add initial message if provided
   if (initialMessage) {
@@ -42,7 +49,8 @@ export async function handleCreateSession(request: CreateSessionRequest) {
 
 export async function handleGetSession(sessionId: string) {
   // Get session details
-  const [session] = await db.select()
+  const [session] = await db
+    .select()
     .from(chatSessions)
     .where(eq(chatSessions.id, sessionId))
     .limit(1);
@@ -52,7 +60,8 @@ export async function handleGetSession(sessionId: string) {
   }
 
   // Get all messages for this session
-  const messages = await db.select()
+  const messages = await db
+    .select()
     .from(chatMessages)
     .where(eq(chatMessages.sessionId, sessionId))
     .orderBy(chatMessages.createdAt);
@@ -64,7 +73,8 @@ export async function handleGetSession(sessionId: string) {
 }
 
 export async function handleGetUserSessions(userId: string) {
-  const sessions = await db.select()
+  const sessions = await db
+    .select()
     .from(chatSessions)
     .where(eq(chatSessions.userId, userId))
     .orderBy(desc(chatSessions.updatedAt));
@@ -72,11 +82,15 @@ export async function handleGetUserSessions(userId: string) {
   return sessions;
 }
 
-export async function handleAddMessage(sessionId: string, request: AddMessageRequest) {
+export async function handleAddMessage(
+  sessionId: string,
+  request: AddMessageRequest
+) {
   const { role, content, files } = request;
 
   // Verify session exists
-  const [session] = await db.select()
+  const [session] = await db
+    .select()
     .from(chatSessions)
     .where(eq(chatSessions.id, sessionId))
     .limit(1);
@@ -90,14 +104,18 @@ export async function handleAddMessage(sessionId: string, request: AddMessageReq
   // Handle file uploads if files are provided
   if (files && files.length > 0) {
     attachments = [];
-    const messageUploadDir = join(process.cwd(), "uploads", "messages", sessionId);
-    
+    const messageUploadDir = join(
+      process.cwd(),
+      "uploads",
+      "messages",
+      sessionId
+    );
+
     // Create upload directory
     await mkdir(messageUploadDir, { recursive: true });
 
     for (const file of files) {
       const attachmentId = ulid();
-      const fileExtension = file.name.split('.').pop() || '';
       const filename = `${attachmentId}_${file.name}`;
       const filePath = join(messageUploadDir, filename);
 
@@ -117,18 +135,22 @@ export async function handleAddMessage(sessionId: string, request: AddMessageReq
 
   // Add the message with attachments
   console.log("Final attachments to save:", attachments);
-  
-  const [message] = await db.insert(chatMessages).values({
-    sessionId,
-    role,
-    content,
-    attachments,
-  }).returning();
+
+  const [message] = await db
+    .insert(chatMessages)
+    .values({
+      sessionId,
+      role,
+      content,
+      attachments,
+    })
+    .returning();
 
   console.log("Saved message:", message);
 
   // Update session timestamp
-  await db.update(chatSessions)
+  await db
+    .update(chatSessions)
     .set({ updatedAt: new Date() })
     .where(eq(chatSessions.id, sessionId));
 
@@ -136,10 +158,11 @@ export async function handleAddMessage(sessionId: string, request: AddMessageReq
 }
 
 export async function updateSessionTitle(sessionId: string, title: string) {
-  const [session] = await db.update(chatSessions)
-    .set({ 
+  const [session] = await db
+    .update(chatSessions)
+    .set({
       title,
-      updatedAt: new Date() 
+      updatedAt: new Date(),
     })
     .where(eq(chatSessions.id, sessionId))
     .returning();
@@ -151,13 +174,17 @@ export async function updateSessionTitle(sessionId: string, title: string) {
   return session;
 }
 
-export async function handleUpdateSession(sessionId: string, updates: { title?: string }) {
+export async function handleUpdateSession(
+  sessionId: string,
+  updates: { title?: string }
+) {
   const { title } = updates;
 
-  const [session] = await db.update(chatSessions)
-    .set({ 
+  const [session] = await db
+    .update(chatSessions)
+    .set({
       title,
-      updatedAt: new Date() 
+      updatedAt: new Date(),
     })
     .where(eq(chatSessions.id, sessionId))
     .returning();
@@ -171,11 +198,11 @@ export async function handleUpdateSession(sessionId: string, updates: { title?: 
 
 export async function handleDeleteSession(sessionId: string) {
   // Delete all messages in the session first
-  await db.delete(chatMessages)
-    .where(eq(chatMessages.sessionId, sessionId));
+  await db.delete(chatMessages).where(eq(chatMessages.sessionId, sessionId));
 
   // Delete the session
-  const [session] = await db.delete(chatSessions)
+  const [session] = await db
+    .delete(chatSessions)
     .where(eq(chatSessions.id, sessionId))
     .returning();
 
@@ -194,7 +221,7 @@ function generateSessionTitle(initialMessage?: string): string {
   // Generate a title from the first message
   const words = initialMessage.split(" ").slice(0, 6);
   let title = words.join(" ");
-  
+
   if (initialMessage.split(" ").length > 6) {
     title += "...";
   }

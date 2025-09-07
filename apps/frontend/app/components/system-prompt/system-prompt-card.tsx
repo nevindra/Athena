@@ -1,7 +1,7 @@
-import { FileText, Edit, Trash2, Copy } from "lucide-react";
+import { Copy, Edit, FileText, Trash2 } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
 
 interface SystemPrompt {
   id: string;
@@ -23,11 +23,18 @@ interface SystemPromptCardProps {
 const categoryColors = {
   "Structured Output": "bg-blue-100 text-blue-800 hover:bg-blue-200",
   "Topic Specific": "bg-purple-100 text-purple-800 hover:bg-purple-200",
-  "Custom": "bg-gray-100 text-gray-800 hover:bg-gray-200",
+  Custom: "bg-gray-100 text-gray-800 hover:bg-gray-200",
 };
 
-export function SystemPromptCard({ prompt, onEdit, onDelete, onDuplicate }: SystemPromptCardProps) {
-  const categoryColor = categoryColors[prompt.category as keyof typeof categoryColors] || categoryColors.Custom;
+export function SystemPromptCard({
+  prompt,
+  onEdit,
+  onDelete,
+  onDuplicate,
+}: SystemPromptCardProps) {
+  const categoryColor =
+    categoryColors[prompt.category as keyof typeof categoryColors] ||
+    categoryColors.Custom;
 
   return (
     <Card className="h-full hover:shadow-md transition-shadow">
@@ -35,7 +42,9 @@ export function SystemPromptCard({ prompt, onEdit, onDelete, onDuplicate }: Syst
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium">{prompt.title}</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {prompt.title}
+            </CardTitle>
           </div>
           <Badge variant="secondary" className={categoryColor}>
             {prompt.category}
@@ -54,9 +63,11 @@ export function SystemPromptCard({ prompt, onEdit, onDelete, onDuplicate }: Syst
               {prompt.content}
             </p>
           </div>
-          
+
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Updated {new Date(prompt.updatedAt).toLocaleDateString()}</span>
+            <span>
+              Updated {new Date(prompt.updatedAt).toLocaleDateString()}
+            </span>
           </div>
 
           <div className="flex gap-1">

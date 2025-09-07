@@ -1,13 +1,35 @@
-import { Bot, Globe, Server, Edit, Trash2, Play, Pause, Plus } from "lucide-react";
+import type { AIConfiguration } from "@athena/shared";
+import {
+  Bot,
+  Edit,
+  Globe,
+  Pause,
+  Play,
+  Plus,
+  Server,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
-import { useConfigurations, useDeleteConfiguration, useUpdateConfiguration } from "~/hooks/use-configurations";
-import type { AIConfiguration, AIProvider } from "@athena/shared";
-import { toast } from "sonner";
-import { Link } from "react-router";
-import { useState } from "react";
+import {
+  useConfigurations,
+  useDeleteConfiguration,
+  useUpdateConfiguration,
+} from "~/hooks/use-configurations";
 
 interface ConfigurationListProps {
   onEditConfiguration?: (config: AIConfiguration) => void;
@@ -27,15 +49,19 @@ const providerNames = {
 
 const providerColors = {
   gemini: "border-blue-200 bg-blue-50/50",
-  ollama: "border-green-200 bg-green-50/50", 
+  ollama: "border-green-200 bg-green-50/50",
   "http-api": "border-purple-200 bg-purple-50/50",
 };
 
-export function ConfigurationList({ onEditConfiguration }: ConfigurationListProps) {
+export function ConfigurationList({
+  onEditConfiguration,
+}: ConfigurationListProps) {
   const { data: configurations, isLoading, error } = useConfigurations();
   const deleteConfiguration = useDeleteConfiguration();
   const updateConfiguration = useUpdateConfiguration();
-  const [configToDelete, setConfigToDelete] = useState<AIConfiguration | null>(null);
+  const [configToDelete, setConfigToDelete] = useState<AIConfiguration | null>(
+    null
+  );
 
   const handleDeleteClick = (config: AIConfiguration) => {
     setConfigToDelete(config);
@@ -49,6 +75,7 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
       toast.success("Configuration deleted successfully");
       setConfigToDelete(null);
     } catch (error) {
+      console.error("Failed to delete configuration:", error);
       toast.error("Failed to delete configuration");
       setConfigToDelete(null);
     }
@@ -62,10 +89,13 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
     try {
       await updateConfiguration.mutateAsync({
         configId: config.id,
-        data: { isActive: !config.isActive }
+        data: { isActive: !config.isActive },
       });
-      toast.success(`Configuration ${config.isActive ? 'deactivated' : 'activated'}`);
+      toast.success(
+        `Configuration ${config.isActive ? "deactivated" : "activated"}`
+      );
     } catch (error) {
+      console.error("Failed to update configuration:", error);
       toast.error("Failed to update configuration");
     }
   };
@@ -74,7 +104,10 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={`loading-skeleton-${Math.random()}-${i}`} className="animate-pulse">
+          <Card
+            key={`loading-skeleton-${Math.random()}-${i}`}
+            className="animate-pulse"
+          >
             <CardHeader>
               <div className="h-4 bg-muted rounded w-3/4" />
               <div className="h-3 bg-muted rounded w-1/2" />
@@ -108,7 +141,8 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-sm">
-          {configurations.length} configuration{configurations.length !== 1 ? 's' : ''}
+          {configurations.length} configuration
+          {configurations.length !== 1 ? "s" : ""}
         </Badge>
         <Button asChild size="sm" className="gap-2">
           <Link to="/models/add">
@@ -122,11 +156,11 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
         {configurations.map((config) => {
           const Icon = providerIcons[config.provider];
           const colorClass = providerColors[config.provider];
-          
+
           return (
-            <Card 
-              key={config.id} 
-              className={`transition-all duration-200 ${colorClass} ${!config.isActive ? 'opacity-60' : ''}`}
+            <Card
+              key={config.id}
+              className={`transition-all duration-200 ${colorClass} ${!config.isActive ? "opacity-60" : ""}`}
             >
               <CardHeader className="pb-2">
                 <div className="space-y-2">
@@ -134,7 +168,7 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
                     <div className="p-1.5 rounded-md bg-background/80">
                       <Icon className="h-4 w-4" />
                     </div>
-                    <Badge 
+                    <Badge
                       variant={config.isActive ? "default" : "secondary"}
                       className="text-xs px-1.5 py-0.5"
                     >
@@ -157,7 +191,12 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
                   <div className="text-xs text-muted-foreground">
                     <div className="flex justify-between items-center">
                       <span>Created</span>
-                      <span>{new Date(config.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <span>
+                        {new Date(config.createdAt).toLocaleDateString(
+                          "en-US",
+                          { month: "short", day: "numeric" }
+                        )}
+                      </span>
                     </div>
                   </div>
 
@@ -177,7 +216,7 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
                           <Play className="h-3 w-3" />
                         )}
                       </Button>
-                      
+
                       {onEditConfiguration && (
                         <Button
                           size="sm"
@@ -209,16 +248,22 @@ export function ConfigurationList({ onEditConfiguration }: ConfigurationListProp
         })}
       </div>
 
-      <AlertDialog open={!!configToDelete} onOpenChange={() => setConfigToDelete(null)}>
+      <AlertDialog
+        open={!!configToDelete}
+        onOpenChange={() => setConfigToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Configuration</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{configToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{configToDelete?.name}"? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancelDelete}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"

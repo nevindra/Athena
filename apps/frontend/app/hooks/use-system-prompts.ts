@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { systemPromptsApi } from "~/services/system-prompts-api";
-import { queryKeys } from "~/lib/query-client";
 import type {
-  SystemPrompt,
   CreateSystemPromptRequest,
+  SystemPrompt,
   UpdateSystemPromptRequest,
 } from "@athena/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "~/lib/query-client";
+import { systemPromptsApi } from "~/services/system-prompts-api";
 
 // Hook to get all system prompts
 export function useSystemPrompts() {
@@ -56,7 +56,10 @@ export function useUpdateSystemPrompt() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ promptId, data }: {
+    mutationFn: ({
+      promptId,
+      data,
+    }: {
       promptId: string;
       data: UpdateSystemPromptRequest;
     }) => systemPromptsApi.updateSystemPrompt(promptId, data),
@@ -72,7 +75,7 @@ export function useUpdateSystemPrompt() {
         queryKeys.allSystemPrompts(),
         (oldPrompts) => {
           if (!oldPrompts) return [updatedPrompt];
-          return oldPrompts.map(prompt =>
+          return oldPrompts.map((prompt) =>
             prompt.id === updatedPrompt.id ? updatedPrompt : prompt
           );
         }
@@ -97,12 +100,14 @@ export function useDeleteSystemPrompt() {
         queryKeys.allSystemPrompts(),
         (oldPrompts) => {
           if (!oldPrompts) return [];
-          return oldPrompts.filter(prompt => prompt.id !== deletedPromptId);
+          return oldPrompts.filter((prompt) => prompt.id !== deletedPromptId);
         }
       );
 
       // Remove the specific system prompt from cache
-      queryClient.removeQueries({ queryKey: queryKeys.systemPromptById(deletedPromptId) });
+      queryClient.removeQueries({
+        queryKey: queryKeys.systemPromptById(deletedPromptId),
+      });
     },
     onError: (error) => {
       console.error("Failed to delete system prompt:", error);
@@ -114,13 +119,16 @@ export function useDeleteSystemPrompt() {
 export function useOptimisticSystemPromptUpdate() {
   const queryClient = useQueryClient();
 
-  const updateOptimistically = (promptId: string, updates: Partial<SystemPrompt>) => {
+  const updateOptimistically = (
+    promptId: string,
+    updates: Partial<SystemPrompt>
+  ) => {
     // Optimistically update the cache
     queryClient.setQueryData<SystemPrompt[]>(
       queryKeys.allSystemPrompts(),
       (oldPrompts) => {
         if (!oldPrompts) return [];
-        return oldPrompts.map(prompt =>
+        return oldPrompts.map((prompt) =>
           prompt.id === promptId ? { ...prompt, ...updates } : prompt
         );
       }

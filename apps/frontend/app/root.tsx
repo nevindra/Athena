@@ -1,3 +1,5 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   Links,
   Meta,
@@ -6,8 +8,6 @@ import {
   ScrollRestoration,
   isRouteErrorResponse,
 } from "react-router";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -30,7 +30,8 @@ export const links: Route.LinksFunction = () => [
   {
     rel: "stylesheet",
     href: "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css",
-    integrity: "sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP",
+    integrity:
+      "sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP",
     crossOrigin: "anonymous",
   },
 ];

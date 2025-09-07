@@ -1,4 +1,8 @@
-import type { GeminiConfigSettings, HttpApiConfigSettings, OllamaConfigSettings } from "@athena/shared";
+import type {
+  GeminiConfigSettings,
+  HttpApiConfigSettings,
+  OllamaConfigSettings,
+} from "@athena/shared";
 
 export type ProviderType = "gemini" | "http-api" | "ollama";
 
@@ -23,7 +27,15 @@ export interface ConditionalLogic {
 export interface FieldDefinition {
   key: string;
   label: string;
-  type: "text" | "password" | "url" | "select" | "slider" | "headers" | "textarea" | "checkbox";
+  type:
+  | "text"
+  | "password"
+  | "url"
+  | "select"
+  | "slider"
+  | "headers"
+  | "textarea"
+  | "checkbox";
   required?: boolean;
   placeholder?: string;
   description?: string;
@@ -68,7 +80,8 @@ const geminiProvider: ProviderDefinition = {
       type: "password",
       required: true,
       placeholder: "Enter your Google Gemini API key",
-      description: 'Get your API key from the <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">Google AI Studio</a>',
+      description:
+        'Get your API key from the <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground">Google AI Studio</a>',
       visibilityToggle: true,
     },
     {
@@ -83,7 +96,7 @@ const geminiProvider: ProviderDefinition = {
     },
     {
       key: "temperature",
-      label: "Temperature", 
+      label: "Temperature",
       type: "slider",
       description: "Higher values = more creative, lower = more focused",
       options: { min: 0, max: 2, step: 0.1 },
@@ -91,7 +104,7 @@ const geminiProvider: ProviderDefinition = {
     {
       key: "maxTokens",
       label: "Max Tokens",
-      type: "slider", 
+      type: "slider",
       description: "Maximum response length in tokens",
       options: { min: 1, max: 8192, step: 1 },
     },
@@ -99,14 +112,15 @@ const geminiProvider: ProviderDefinition = {
       key: "topP",
       label: "Top-p",
       type: "slider",
-      description: "Nucleus sampling - controls word choice diversity", 
+      description: "Nucleus sampling - controls word choice diversity",
       options: { min: 0, max: 1, step: 0.1 },
     },
     {
       key: "topK",
       label: "Top-k",
       type: "slider",
-      description: "Limits the number of highest probability tokens to consider for each step.",
+      description:
+        "Limits the number of highest probability tokens to consider for each step.",
       options: { min: 1, max: 100, step: 1 },
     },
     {
@@ -116,7 +130,7 @@ const geminiProvider: ProviderDefinition = {
       description: "Enable real-time streaming for immediate response feedback",
       options: [
         { value: "true", label: "Enabled" },
-        { value: "false", label: "Disabled" }
+        { value: "false", label: "Disabled" },
       ],
     },
   ],
@@ -154,7 +168,8 @@ const httpApiProvider: ProviderDefinition = {
       type: "url",
       required: true,
       placeholder: "https://api.openai.com/v1",
-      description: "The base URL for your API endpoint (without trailing slash)",
+      description:
+        "The base URL for your API endpoint (without trailing slash)",
     },
     {
       key: "authType",
@@ -199,7 +214,7 @@ const httpApiProvider: ProviderDefinition = {
     },
     {
       key: "temperature",
-      label: "Temperature", 
+      label: "Temperature",
       type: "slider",
       description: "Higher values = more creative, lower = more focused",
       options: { min: 0, max: 2, step: 0.1 },
@@ -207,7 +222,7 @@ const httpApiProvider: ProviderDefinition = {
     {
       key: "maxTokens",
       label: "Max Tokens",
-      type: "slider", 
+      type: "slider",
       description: "Maximum response length in tokens",
       options: { min: 1, max: 8192, step: 1 },
     },
@@ -215,7 +230,7 @@ const httpApiProvider: ProviderDefinition = {
       key: "topP",
       label: "Top-p",
       type: "slider",
-      description: "Nucleus sampling - controls word choice diversity", 
+      description: "Nucleus sampling - controls word choice diversity",
       options: { min: 0, max: 1, step: 0.1 },
     },
     {
@@ -226,7 +241,7 @@ const httpApiProvider: ProviderDefinition = {
       options: { min: -2, max: 2, step: 0.1 },
     },
     {
-      key: "frequencyPenalty", 
+      key: "frequencyPenalty",
       label: "Frequency Penalty",
       type: "slider",
       description: "Penalize words that repeat frequently",
@@ -239,7 +254,7 @@ const httpApiProvider: ProviderDefinition = {
       description: "Enable real-time streaming for immediate response feedback",
       options: [
         { value: "true", label: "Enabled" },
-        { value: "false", label: "Disabled" }
+        { value: "false", label: "Disabled" },
       ],
     },
   ],
@@ -257,9 +272,7 @@ const httpApiProvider: ProviderDefinition = {
     authType: "bearer",
     streamResponse: "true",
   },
-  specialSections: [
-    { type: "quick-setup" },
-  ],
+  specialSections: [{ type: "quick-setup" }],
   validation: {
     required: ["name", "baseUrl", "model"],
     custom: (data) => {
@@ -293,7 +306,8 @@ const ollamaProvider: ProviderDefinition = {
       type: "url",
       required: true,
       placeholder: "http://localhost:11434",
-      description: "The URL where your Ollama server is running. Default is http://localhost:11434",
+      description:
+        "The URL where your Ollama server is running. Default is http://localhost:11434",
     },
     {
       key: "model",
@@ -310,13 +324,15 @@ const ollamaProvider: ProviderDefinition = {
         { value: "gemma2:9b", label: "gemma2:9b", badge: "Popular" },
         { value: "qwen2.5:7b", label: "qwen2.5:7b", badge: "Popular" },
       ],
-      description: "Select a model from your local Ollama installation or choose a popular model to pull.",
+      description:
+        "Select a model from your local Ollama installation or choose a popular model to pull.",
     },
     {
       key: "temperature",
       label: "Temperature",
       type: "slider",
-      description: "Controls randomness. Lower values make responses more focused and deterministic.",
+      description:
+        "Controls randomness. Lower values make responses more focused and deterministic.",
       options: { min: 0, max: 2, step: 0.1 },
     },
     {
@@ -330,21 +346,24 @@ const ollamaProvider: ProviderDefinition = {
       key: "topP",
       label: "Top-p",
       type: "slider",
-      description: "Nucleus sampling. Only tokens with cumulative probability up to this value are considered.",
+      description:
+        "Nucleus sampling. Only tokens with cumulative probability up to this value are considered.",
       options: { min: 0, max: 1, step: 0.1 },
     },
     {
       key: "topK",
       label: "Top-k",
       type: "slider",
-      description: "Limits the number of highest probability tokens to consider for each step.",
+      description:
+        "Limits the number of highest probability tokens to consider for each step.",
       options: { min: 1, max: 100, step: 1 },
     },
     {
       key: "numCtx",
       label: "Context Length (num_ctx)",
       type: "slider",
-      description: "Sets the size of the context window used to generate responses.",
+      description:
+        "Sets the size of the context window used to generate responses.",
       options: { min: 1024, max: 32768, step: 512 },
     },
   ],
@@ -358,9 +377,7 @@ const ollamaProvider: ProviderDefinition = {
     topK: 40,
     numCtx: 4096,
   },
-  specialSections: [
-    { type: "installation-guide" },
-  ],
+  specialSections: [{ type: "installation-guide" }],
   validation: {
     required: ["name", "serverUrl", "model"],
   },
@@ -372,8 +389,9 @@ export const PROVIDER_DEFINITIONS: Record<ProviderType, ProviderDefinition> = {
   ollama: ollamaProvider,
 };
 
-
-export const getProviderDefinition = (provider: ProviderType): ProviderDefinition => {
+export const getProviderDefinition = (
+  provider: ProviderType
+): ProviderDefinition => {
   return PROVIDER_DEFINITIONS[provider];
 };
 
@@ -382,16 +400,25 @@ export const prepareSettingsForApi = (
   provider: ProviderType,
   data: Record<string, unknown>
 ): GeminiConfigSettings | HttpApiConfigSettings | OllamaConfigSettings => {
-  const { name, ...settings } = data;
+  const { name: _name, ...settings } = data;
 
   switch (provider) {
     case "gemini": {
       const settingsTyped = settings as Record<string, unknown>;
       return {
         ...settingsTyped,
-        temperature: typeof settingsTyped.temperature === "string" ? Number.parseFloat(settingsTyped.temperature) || 0.7 : settingsTyped.temperature,
-        maxTokens: typeof settingsTyped.maxTokens === "string" ? Number.parseInt(settingsTyped.maxTokens, 10) || 2048 : settingsTyped.maxTokens,
-        topP: typeof settingsTyped.topP === "string" ? Number.parseFloat(settingsTyped.topP) || 0.9 : settingsTyped.topP,
+        temperature:
+          typeof settingsTyped.temperature === "string"
+            ? Number.parseFloat(settingsTyped.temperature) || 0.7
+            : settingsTyped.temperature,
+        maxTokens:
+          typeof settingsTyped.maxTokens === "string"
+            ? Number.parseInt(settingsTyped.maxTokens, 10) || 2048
+            : settingsTyped.maxTokens,
+        topP:
+          typeof settingsTyped.topP === "string"
+            ? Number.parseFloat(settingsTyped.topP) || 0.9
+            : settingsTyped.topP,
       } as GeminiConfigSettings;
     }
 
@@ -399,16 +426,38 @@ export const prepareSettingsForApi = (
       const settingsTyped = settings as Record<string, unknown>;
       const baseSettings = {
         ...settingsTyped,
-        temperature: typeof settingsTyped.temperature === "string" ? Number.parseFloat(settingsTyped.temperature) || 0.7 : settingsTyped.temperature,
-        maxTokens: typeof settingsTyped.maxTokens === "string" ? Number.parseInt(settingsTyped.maxTokens, 10) || 2048 : settingsTyped.maxTokens,
-        topP: typeof settingsTyped.topP === "string" ? Number.parseFloat(settingsTyped.topP) || 1.0 : settingsTyped.topP,
-        presencePenalty: typeof settingsTyped.presencePenalty === "string" ? Number.parseFloat(settingsTyped.presencePenalty) || 0 : settingsTyped.presencePenalty,
-        frequencyPenalty: typeof settingsTyped.frequencyPenalty === "string" ? Number.parseFloat(settingsTyped.frequencyPenalty) || 0 : settingsTyped.frequencyPenalty,
+        temperature:
+          typeof settingsTyped.temperature === "string"
+            ? Number.parseFloat(settingsTyped.temperature) || 0.7
+            : settingsTyped.temperature,
+        maxTokens:
+          typeof settingsTyped.maxTokens === "string"
+            ? Number.parseInt(settingsTyped.maxTokens, 10) || 2048
+            : settingsTyped.maxTokens,
+        topP:
+          typeof settingsTyped.topP === "string"
+            ? Number.parseFloat(settingsTyped.topP) || 1.0
+            : settingsTyped.topP,
+        presencePenalty:
+          typeof settingsTyped.presencePenalty === "string"
+            ? Number.parseFloat(settingsTyped.presencePenalty) || 0
+            : settingsTyped.presencePenalty,
+        frequencyPenalty:
+          typeof settingsTyped.frequencyPenalty === "string"
+            ? Number.parseFloat(settingsTyped.frequencyPenalty) || 0
+            : settingsTyped.frequencyPenalty,
       };
 
       // Handle API key based on auth type
-      if (settingsTyped.authType === "none" || settingsTyped.authType === "custom" || !(settingsTyped.apiKey as string)?.trim?.()) {
-        const { apiKey, ...preparedSettings } = baseSettings as Record<string, unknown>;
+      if (
+        settingsTyped.authType === "none" ||
+        settingsTyped.authType === "custom" ||
+        !(settingsTyped.apiKey as string)?.trim?.()
+      ) {
+        const { _, ...preparedSettings } = baseSettings as Record<
+          string,
+          unknown
+        >;
         return preparedSettings as HttpApiConfigSettings;
       }
 

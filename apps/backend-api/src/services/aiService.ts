@@ -1,31 +1,30 @@
-import { createOllama } from "ollama-ai-provider-v2";
-import { generateText, streamText, generateObject } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import type {
+  AIProvider,
+  GeminiConfigSettings,
+  HttpApiConfigSettings,
+  JsonField,
+  OllamaConfigSettings,
+  SystemPrompt
+} from "@athena/shared";
+import { generateObject, generateText, streamText } from "ai";
+import { and, eq } from "drizzle-orm";
+import { createOllama } from "ollama-ai-provider-v2";
 import OpenAI from "openai";
+import { z } from "zod";
 import { db } from "../db";
 import { aiConfigurations, systemPrompts } from "../db/schema";
-import { eq, and } from "drizzle-orm";
 import { encryptionService } from "./encryptionService";
-import { z } from "zod";
-import type {
-  OllamaConfigSettings,
-  HttpApiConfigSettings,
-  GeminiConfigSettings,
-  AIProvider,
-  SystemPrompt,
-  JsonField,
-  SystemPromptCategory,
-} from "@athena/shared";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content:
-    | string
-    | Array<{
-        type: "text" | "image";
-        text?: string;
-        image?: string; // base64 data URL
-      }>;
+  | string
+  | Array<{
+    type: "text" | "image";
+    text?: string;
+    image?: string; // base64 data URL
+  }>;
 }
 
 export interface ChatRequest {
@@ -82,12 +81,15 @@ function convertMessagesForGemini(
 ) {
   // Create a map of message content to message IDs for attachment lookup
   // Since we don't have message IDs in the messages array, we'll need to match by content
-  const messageAttachmentMap = new Map<string, Array<{
-    id: string;
-    filename: string;
-    mimeType: string;
-    data: Buffer;
-  }>>();
+  const messageAttachmentMap = new Map<
+    string,
+    Array<{
+      id: string;
+      filename: string;
+      mimeType: string;
+      data: Buffer;
+    }>
+  >();
 
   // For now, we'll add all attachments to the last user message
   // This assumes the most recent user message is the one with attachments
@@ -103,10 +105,11 @@ function convertMessagesForGemini(
 
     if (lastUserMessageIndex >= 0) {
       const lastUserMessage = messages[lastUserMessageIndex];
-      const messageKey = typeof lastUserMessage.content === "string" 
-        ? lastUserMessage.content 
-        : JSON.stringify(lastUserMessage.content);
-      
+      const messageKey =
+        typeof lastUserMessage.content === "string"
+          ? lastUserMessage.content
+          : JSON.stringify(lastUserMessage.content);
+
       // Combine all attachments from all attachment files
       const allAttachments: Array<{
         id: string;
@@ -136,10 +139,11 @@ function convertMessagesForGemini(
 
     if (lastUserMessageIndex >= 0) {
       const lastUserMessage = messages[lastUserMessageIndex];
-      const messageKey = typeof lastUserMessage.content === "string" 
-        ? lastUserMessage.content 
-        : JSON.stringify(lastUserMessage.content);
-      
+      const messageKey =
+        typeof lastUserMessage.content === "string"
+          ? lastUserMessage.content
+          : JSON.stringify(lastUserMessage.content);
+
       // Convert base64 files to Buffer format
       const convertedFiles: Array<{
         id: string;
@@ -150,10 +154,10 @@ function convertMessagesForGemini(
 
       for (const file of files) {
         // Extract base64 data (remove data URL prefix if present)
-        const base64Data = file.data.includes(",") 
-          ? file.data.split(",")[1] 
+        const base64Data = file.data.includes(",")
+          ? file.data.split(",")[1]
           : file.data;
-        
+
         convertedFiles.push({
           id: `stateless_${Date.now()}_${Math.random()}`,
           filename: file.name,
@@ -164,7 +168,10 @@ function convertMessagesForGemini(
 
       // Add to existing attachments or create new entry
       const existingAttachments = messageAttachmentMap.get(messageKey) || [];
-      messageAttachmentMap.set(messageKey, [...existingAttachments, ...convertedFiles]);
+      messageAttachmentMap.set(messageKey, [
+        ...existingAttachments,
+        ...convertedFiles,
+      ]);
     }
   }
 
@@ -200,12 +207,12 @@ function convertMessagesForGemini(
       contentParts.push({ type: "text", text: msg.content });
     }
 
-
     // Add attachments from database for this message
-    const messageKey = typeof msg.content === "string" 
-      ? msg.content 
-      : JSON.stringify(msg.content);
-    
+    const messageKey =
+      typeof msg.content === "string"
+        ? msg.content
+        : JSON.stringify(msg.content);
+
     const messageAttachments = messageAttachmentMap.get(messageKey);
     if (msg.role === "user" && messageAttachments?.length) {
       for (const attachment of messageAttachments) {
@@ -231,11 +238,11 @@ function convertMessagesForGemini(
 }
 
 // Helper function to convert JsonField array to Zod schema
-function buildZodSchema(fields: JsonField[]): z.ZodObject<Record<string, any>> {
-  const shape: Record<string, z.ZodTypeAny> = {};
+function buildZodSchema(fields: JsonField[]): z.ZodObject<any> {
+  const shape: Record<string, any> = {};
 
   for (const field of fields) {
-    let zodType: z.ZodTypeAny;
+    let zodType: any;
 
     switch (field.type) {
       case "string":
@@ -416,7 +423,10 @@ async function getAIConfig(
   // Try to decrypt sensitive fields if they exist
   let decryptedSettings: any;
   try {
-    decryptedSettings = await encryptionService.decryptSensitiveFields(provider, parsedSettings);
+    decryptedSettings = await encryptionService.decryptSensitiveFields(
+      provider,
+      parsedSettings
+    );
   } catch (decryptError) {
     console.warn(
       "Decryption failed, using settings as-is (might be unencrypted):",
@@ -437,7 +447,14 @@ async function getAIConfig(
 export async function generateChatResponse(
   request: ChatRequest
 ): Promise<ChatResponse> {
-  const { messages, userId, configurationId, systemPromptId, attachmentFiles, files } = request;
+  const {
+    messages,
+    userId,
+    configurationId,
+    systemPromptId,
+    attachmentFiles,
+    files,
+  } = request;
 
   try {
     // Get AI configuration from database
@@ -450,7 +467,12 @@ export async function generateChatResponse(
       systemPrompt = await getSystemPrompt(userId, systemPromptId);
     }
 
-    let result: { text: string; finishReason?: string; reasoning?: any; usage?: any };
+    let result: {
+      text: string;
+      finishReason?: string;
+      reasoning?: any;
+      usage?: any;
+    };
 
     if (provider === "gemini") {
       const geminiSettings = settings as GeminiConfigSettings;
@@ -461,62 +483,83 @@ export async function generateChatResponse(
       });
 
       // Convert messages specifically for Gemini format
-      const convertedMessages = convertMessagesForGemini(messages, attachmentFiles, files);
+      const convertedMessages = convertMessagesForGemini(
+        messages,
+        attachmentFiles,
+        files
+      );
 
       // Handle structured output prompts vs regular prompts
-      if (systemPrompt && systemPrompt.category === "Structured Output" && systemPrompt.jsonSchema) {
+      if (
+        systemPrompt &&
+        systemPrompt.category === "Structured Output" &&
+        systemPrompt.jsonSchema
+      ) {
         // Use generateObject for structured outputs
         const zodSchema = buildZodSchema(systemPrompt.jsonSchema);
-        
+
         // Enhanced system prompt for strict schema compliance
         const enhancedSystemPrompt = `${systemPrompt.content}
 
-          CRITICAL: You MUST respond with valid JSON that matches the exact schema above. 
+          CRITICAL: You MUST respond with valid JSON that matches the exact schema above.
           - Include ONLY the fields defined in the schema
           - Use the exact field names specified
-          - Match the exact data types specified  
+          - Match the exact data types specified
           - Do NOT add any additional fields, explanations, or context
           - Do NOT provide analysis beyond what's requested
           - Your response must be parseable as JSON with only the specified structure
 
-          Schema fields: ${systemPrompt.jsonSchema.map(field => `${field.name} (${field.type})${field.required ? ' *required*' : ''}`).join(', ')}`;
-        
-        const { object, reasoning, finishReason, usage } = await generateObject({
-          model: googleProvider(geminiSettings.model),
-          messages: convertedMessages,
-          system: enhancedSystemPrompt,
-          schema: zodSchema,
-          temperature: 0.1, // Lower temperature for more consistent structured output
-          topP: geminiSettings.topP,
-          providerOptions: {
-            google: {
-              structuredOutputs: true, // Ensure structured outputs are enabled
-              thinkingConfig: {
-                thinkingBudget: 1024, // Reduce thinking to focus on schema compliance
-                includeThoughts: false, // Disable thoughts to avoid confusion
+          Schema fields: ${systemPrompt.jsonSchema.map((field) => `${field.name} (${field.type})${field.required ? " *required*" : ""}`).join(", ")}`;
+
+        const { object, reasoning, finishReason, usage } = await generateObject(
+          {
+            model: googleProvider(geminiSettings.model),
+            messages: convertedMessages,
+            system: enhancedSystemPrompt,
+            schema: zodSchema,
+            temperature: 0.1, // Lower temperature for more consistent structured output
+            topP: geminiSettings.topP,
+            providerOptions: {
+              google: {
+                structuredOutputs: true, // Ensure structured outputs are enabled
+                thinkingConfig: {
+                  thinkingBudget: 1024, // Reduce thinking to focus on schema compliance
+                  includeThoughts: false, // Disable thoughts to avoid confusion
+                },
               },
             },
-          },
-        });
-        
+          }
+        );
+
         // Validate the generated object against expected fields
-        const expectedFields = systemPrompt.jsonSchema.filter(f => f.required).map(f => f.name);
+        const expectedFields = systemPrompt.jsonSchema
+          .filter((f) => f.required)
+          .map((f) => f.name);
         const actualFields = Object.keys(object);
-        const missingFields = expectedFields.filter(field => !(field in object));
-        const extraFields = actualFields.filter(field => !systemPrompt.jsonSchema.some(f => f.name === field));
-        
+        const missingFields = expectedFields.filter(
+          (field) => !(field in object)
+        );
+        const extraFields = actualFields.filter(
+          (field) => !systemPrompt.jsonSchema.some((f) => f.name === field)
+        );
+
         if (missingFields.length > 0) {
           console.warn("Missing required fields:", missingFields);
         }
         if (extraFields.length > 0) {
           console.warn("Extra fields not in schema:", extraFields);
         }
-        
+
         // Convert object to formatted JSON string - use compact format for simple objects
-        const isSimpleObject = Object.keys(object).length <= 3 && 
-          Object.values(object).every(v => typeof v !== 'object' || v === null);
-        
-        const text = isSimpleObject ? JSON.stringify(object) : JSON.stringify(object, null, 2);
+        const isSimpleObject =
+          Object.keys(object).length <= 3 &&
+          Object.values(object).every(
+            (v) => typeof v !== "object" || v === null
+          );
+
+        const text = isSimpleObject
+          ? JSON.stringify(object)
+          : JSON.stringify(object, null, 2);
         result = { text, reasoning, finishReason, usage };
       } else {
         // Use generateText for regular prompts or topic-specific prompts
@@ -552,9 +595,9 @@ export async function generateChatResponse(
         role: msg.role,
         content: Array.isArray(msg.content)
           ? msg.content
-              .filter((part) => part.type === "text")
-              .map((part) => part.text)
-              .join(" ")
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join(" ")
           : msg.content,
       }));
 
@@ -578,9 +621,9 @@ export async function generateChatResponse(
         role: msg.role as "system" | "user" | "assistant",
         content: Array.isArray(msg.content)
           ? msg.content
-              .filter((part) => part.type === "text")
-              .map((part) => part.text)
-              .join(" ")
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join(" ")
           : msg.content,
       }));
 
@@ -588,7 +631,7 @@ export async function generateChatResponse(
       if (systemPrompt?.content) {
         textMessages = [
           { role: "system", content: systemPrompt.content },
-          ...textMessages
+          ...textMessages,
         ];
       }
 
@@ -603,10 +646,10 @@ export async function generateChatResponse(
         finishReason: response.choices[0]?.finish_reason || "stop",
         usage: response.usage
           ? {
-              promptTokens: response.usage.prompt_tokens,
-              completionTokens: response.usage.completion_tokens,
-              totalTokens: response.usage.total_tokens,
-            }
+            promptTokens: response.usage.prompt_tokens,
+            completionTokens: response.usage.completion_tokens,
+            totalTokens: response.usage.total_tokens,
+          }
           : undefined,
       };
     } else {
@@ -627,10 +670,10 @@ export async function generateChatResponse(
       reasoning: result.reasoning || undefined,
       usage: result.usage
         ? {
-            promptTokens: result.usage.promptTokens || 0,
-            completionTokens: result.usage.completionTokens || 0,
-            totalTokens: result.usage.totalTokens || 0,
-          }
+          promptTokens: result.usage.promptTokens || 0,
+          completionTokens: result.usage.completionTokens || 0,
+          totalTokens: result.usage.totalTokens || 0,
+        }
         : undefined,
     };
   } catch (error) {
@@ -640,7 +683,14 @@ export async function generateChatResponse(
 }
 
 export async function streamChatResponse(request: ChatRequest) {
-  const { messages, userId, configurationId, systemPromptId, attachmentFiles, files } = request;
+  const {
+    messages,
+    userId,
+    configurationId,
+    systemPromptId,
+    attachmentFiles,
+    files,
+  } = request;
 
   try {
     // Get AI configuration from database
@@ -663,7 +713,11 @@ export async function streamChatResponse(request: ChatRequest) {
       });
 
       // Convert messages specifically for Gemini format
-      const convertedMessages = convertMessagesForGemini(messages, attachmentFiles, files);
+      const convertedMessages = convertMessagesForGemini(
+        messages,
+        attachmentFiles,
+        files
+      );
 
       // Note: For streaming, we only support text generation, not structured output
       result = streamText({
@@ -692,9 +746,9 @@ export async function streamChatResponse(request: ChatRequest) {
         role: msg.role,
         content: Array.isArray(msg.content)
           ? msg.content
-              .filter((part) => part.type === "text")
-              .map((part) => part.text)
-              .join(" ")
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join(" ")
           : msg.content,
       }));
 
@@ -718,9 +772,9 @@ export async function streamChatResponse(request: ChatRequest) {
         role: msg.role as "system" | "user" | "assistant",
         content: Array.isArray(msg.content)
           ? msg.content
-              .filter((part) => part.type === "text")
-              .map((part) => part.text)
-              .join(" ")
+            .filter((part) => part.type === "text")
+            .map((part) => part.text)
+            .join(" ")
           : msg.content,
       }));
 
@@ -728,7 +782,7 @@ export async function streamChatResponse(request: ChatRequest) {
       if (systemPrompt?.content) {
         textMessages = [
           { role: "system", content: systemPrompt.content },
-          ...textMessages
+          ...textMessages,
         ];
       }
 

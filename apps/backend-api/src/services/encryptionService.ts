@@ -1,20 +1,21 @@
 import { env } from "../config/env";
 
-const algorithm = "aes-256-gcm";
 
 export class EncryptionService {
   private key: Uint8Array;
 
   constructor() {
     // Convert the encryption key to a proper format
-    this.key = new TextEncoder().encode(env.ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    this.key = new TextEncoder().encode(
+      env.ENCRYPTION_KEY.padEnd(32, "0").slice(0, 32)
+    );
   }
 
   async encrypt(data: string): Promise<string> {
     try {
       const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
       const encodedData = new TextEncoder().encode(data);
-      
+
       const cryptoKey = await crypto.subtle.importKey(
         "raw",
         this.key,
@@ -38,7 +39,7 @@ export class EncryptionService {
       combined.set(new Uint8Array(encrypted), iv.length);
 
       // Convert to base64
-      return Buffer.from(combined).toString('base64');
+      return Buffer.from(combined).toString("base64");
     } catch (error) {
       console.error("Encryption failed:", error);
       throw new Error("Failed to encrypt data");
@@ -47,8 +48,8 @@ export class EncryptionService {
 
   async decrypt(encryptedData: string): Promise<string> {
     try {
-      const combined = new Uint8Array(Buffer.from(encryptedData, 'base64'));
-      
+      const combined = new Uint8Array(Buffer.from(encryptedData, "base64"));
+
       // Extract IV (first 12 bytes) and encrypted data
       const iv = combined.slice(0, 12);
       const encrypted = combined.slice(12);
@@ -82,7 +83,9 @@ export class EncryptionService {
     return this.encrypt(jsonString);
   }
 
-  async decryptObject<T extends Record<string, any>>(encryptedData: string): Promise<T> {
+  async decryptObject<T extends Record<string, any>>(
+    encryptedData: string
+  ): Promise<T> {
     const jsonString = await this.decrypt(encryptedData);
     return JSON.parse(jsonString) as T;
   }
@@ -97,16 +100,19 @@ export class EncryptionService {
           settingsCopy.apiKey = await this.encrypt(settingsCopy.apiKey);
         }
         break;
-      
+
       case "ollama":
         // Ollama typically doesn't have sensitive fields
         break;
-      
+
       case "http-api":
         if (settingsCopy.apiKey) {
           settingsCopy.apiKey = await this.encrypt(settingsCopy.apiKey);
         }
-        if (settingsCopy.headers && Object.keys(settingsCopy.headers).length > 0) {
+        if (
+          settingsCopy.headers &&
+          Object.keys(settingsCopy.headers).length > 0
+        ) {
           const encryptedHeaders: Record<string, string> = {};
           for (const [key, value] of Object.entries(settingsCopy.headers)) {
             encryptedHeaders[key] = await this.encrypt(value as string);
@@ -130,16 +136,19 @@ export class EncryptionService {
             settingsCopy.apiKey = await this.decrypt(settingsCopy.apiKey);
           }
           break;
-        
+
         case "ollama":
           // Ollama typically doesn't have sensitive fields
           break;
-        
+
         case "http-api":
           if (settingsCopy.apiKey) {
             settingsCopy.apiKey = await this.decrypt(settingsCopy.apiKey);
           }
-          if (settingsCopy.headers && Object.keys(settingsCopy.headers).length > 0) {
+          if (
+            settingsCopy.headers &&
+            Object.keys(settingsCopy.headers).length > 0
+          ) {
             const decryptedHeaders: Record<string, string> = {};
             for (const [key, value] of Object.entries(settingsCopy.headers)) {
               decryptedHeaders[key] = await this.decrypt(value as string);

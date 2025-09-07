@@ -1,6 +1,12 @@
-import { Label } from "~/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion";
 import { Card } from "~/components/ui/card";
-import { Slider } from "~/components/ui/slider";
+import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -8,13 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "~/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
+import { Slider } from "~/components/ui/slider";
 import type { ProviderType } from "~/features/models/provider-definitions";
 import { getProviderDefinition } from "~/features/models/provider-definitions";
 
@@ -24,46 +24,67 @@ interface ModelParamsProps {
   onChange: (key: string, value: unknown) => void;
 }
 
-export function ModelParams({
-  provider,
-  values,
-  onChange,
-}: ModelParamsProps) {
+export function ModelParams({ provider, values, onChange }: ModelParamsProps) {
   const providerDefinition = getProviderDefinition(provider);
-  
+
   if (!providerDefinition) {
     return null;
   }
-  
+
   // Get model parameter fields directly from provider definition
-  const paramFields = providerDefinition.fields.filter(field => 
-    field.type === "slider" || (field.type === "select" && field.key === "streamResponse")
+  const paramFields = providerDefinition.fields.filter(
+    (field) =>
+      field.type === "slider" ||
+      (field.type === "select" && field.key === "streamResponse")
   );
-  
+
   // Add badges for better UX
-  const allFields = paramFields.map(field => ({
+  const allFields = paramFields.map((field) => ({
     ...field,
-    badge: getBadgeForField(field.key)
+    badge: getBadgeForField(field.key),
   }));
-  
+
   function getBadgeForField(key: string): string {
     switch (key) {
-      case "temperature": return "Creativity";
-      case "maxTokens": return "Length";
-      case "topP": return "Focus";
-      case "presencePenalty": return "Topics";
-      case "frequencyPenalty": return "Repetition";
-      case "streamResponse": return "Real-time";
-      case "topK": return "Selection";
-      case "numCtx": return "Context";
-      default: return "Parameter";
+      case "temperature":
+        return "Creativity";
+      case "maxTokens":
+        return "Length";
+      case "topP":
+        return "Focus";
+      case "presencePenalty":
+        return "Topics";
+      case "frequencyPenalty":
+        return "Repetition";
+      case "streamResponse":
+        return "Real-time";
+      case "topK":
+        return "Selection";
+      case "numCtx":
+        return "Context";
+      default:
+        return "Parameter";
     }
   }
-  
-  const renderField = (field: { key: string; label: string; type: string; description?: string; options?: { min: number; max: number; step: number } | { value: string; label: string }[]; badge?: string }) => {
+
+  const renderField = (field: {
+    key: string;
+    label: string;
+    type: string;
+    description?: string;
+    options?:
+      | { min: number; max: number; step: number }
+      | { value: string; label: string }[];
+    badge?: string;
+  }) => {
     const value = values[field.key];
-    
-    if (field.type === "slider" && field.options && typeof field.options === 'object' && 'min' in field.options) {
+
+    if (
+      field.type === "slider" &&
+      field.options &&
+      typeof field.options === "object" &&
+      "min" in field.options
+    ) {
       return (
         <div className="space-y-3" key={field.key}>
           <div className="flex items-center gap-2">
@@ -78,13 +99,21 @@ export function ModelParams({
               min={field.options.min}
               max={field.options.max}
               step={field.options.step}
-              value={[typeof value === "string" ? Number.parseFloat(value) || field.options.min : (value as number) || field.options.min]}
+              value={[
+                typeof value === "string"
+                  ? Number.parseFloat(value) || field.options.min
+                  : (value as number) || field.options.min,
+              ]}
               onValueChange={([newValue]) => onChange(field.key, newValue)}
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{field.options.min}</span>
-              <span className="font-mono">{typeof value === "string" ? Number.parseFloat(value) || field.options.min : (value as number) || field.options.min}</span>
+              <span className="font-mono">
+                {typeof value === "string"
+                  ? Number.parseFloat(value) || field.options.min
+                  : (value as number) || field.options.min}
+              </span>
               <span>{field.options.max}</span>
             </div>
           </div>
@@ -96,7 +125,7 @@ export function ModelParams({
         </div>
       );
     }
-    
+
     if (field.type === "select" && field.key === "streamResponse") {
       const options = field.options as { value: string; label: string }[];
       return (
@@ -108,7 +137,7 @@ export function ModelParams({
             {field.badge && <Badge>{field.badge}</Badge>}
           </div>
           <Select
-            value={value as string || "true"}
+            value={(value as string) || "true"}
             onValueChange={(newValue) => onChange(field.key, newValue)}
           >
             <SelectTrigger className="font-mono w-full">
@@ -130,7 +159,7 @@ export function ModelParams({
         </div>
       );
     }
-    
+
     return null;
   };
   return (
