@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Bot, Home, Image, Workflow } from "lucide-react";
+import { BookOpen, Bot, Home, Image, ScanText, Workflow } from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "@/components/navigation/nav-main";
@@ -48,6 +48,11 @@ const data = {
       title: "Image Generator",
       url: "/image-generator",
       icon: Image,
+    },
+    {
+      title: "OCR Reader",
+      url: "/ocr-reader",
+      icon: ScanText,
     },
     {
       title: "Automation",

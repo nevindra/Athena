@@ -85,11 +85,22 @@ export function FileGrid({
 }: FileGridProps) {
   const [actionFile, setActionFile] = useState<FileItem | null>(null);
 
+  const handleFileDownload = (file: FileItem) => {
+    if (file.downloadUrl && file.type === "file") {
+      const link = document.createElement("a");
+      link.href = file.downloadUrl;
+      link.download = file.name;
+      link.click();
+    }
+  };
+
   const handleFileClick = (file: FileItem) => {
     if (file.type === "folder") {
       const newPath =
         file.path === "/" ? `/${file.name}` : `${file.path}/${file.name}`;
       onPathChange(newPath);
+    } else if (file.type === "file") {
+      handleFileDownload(file);
     }
   };
 
@@ -209,7 +220,7 @@ export function FileGrid({
                         Rename
                       </DropdownMenuItem>
                       {file.type === "file" && (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFileDownload(file)}>
                           <Download className="size-4 mr-2" />
                           Download
                         </DropdownMenuItem>
@@ -314,7 +325,7 @@ export function FileGrid({
                       Rename
                     </DropdownMenuItem>
                     {file.type === "file" && (
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleFileDownload(file)}>
                         <Download className="size-4 mr-2" />
                         Download
                       </DropdownMenuItem>

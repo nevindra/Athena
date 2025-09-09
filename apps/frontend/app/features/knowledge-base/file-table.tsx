@@ -32,6 +32,13 @@ import {
 import { cn } from "~/lib/utils";
 import { FileActions } from "./file-actions";
 import type { FileItem } from "./file-manager";
+import {
+  formatFileSize,
+  formatTimeAgo,
+  getFileIconComponent,
+  getFileIconColor,
+  handleFileDownload,
+} from "./file-preview-utils";
 
 interface FileTableProps {
   files: FileItem[];
@@ -41,61 +48,6 @@ interface FileTableProps {
   onRenameFile: (fileId: string, newName: string) => void;
 }
 
-const getFileIcon = (file: FileItem) => {
-  if (file.type === "folder" || file.mimeType === "knowledge-base")
-    return Folder;
-  if (!file.mimeType) return FileText;
-
-  if (file.mimeType.startsWith("image/")) return Image;
-  if (file.mimeType.includes("spreadsheet") || file.mimeType === "text/csv")
-    return FileSpreadsheet;
-  return FileText;
-};
-
-const getFileIconColor = (file: FileItem) => {
-  if (file.type === "folder" || file.mimeType === "knowledge-base")
-    return "text-blue-500";
-  if (!file.mimeType) return "text-muted-foreground";
-
-  if (file.mimeType.startsWith("image/")) return "text-green-500";
-  if (file.mimeType.includes("spreadsheet") || file.mimeType === "text/csv")
-    return "text-emerald-500";
-  if (file.mimeType.includes("pdf")) return "text-red-500";
-  if (file.mimeType.includes("word")) return "text-blue-600";
-  return "text-muted-foreground";
-};
-
-const formatFileSize = (bytes?: number) => {
-  if (!bytes) return "";
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-};
-
-const formatDate = (date: Date) => {
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 1) return "1 day ago";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) {
-    const weeks = Math.ceil(diffDays / 7);
-    return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
-  }
-  if (diffDays < 365) {
-    const months = Math.ceil(diffDays / 30);
-    return months === 1 ? "1 month ago" : `${months} months ago`;
-  }
-
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
 
 export function FileTable({
   files,
@@ -105,6 +57,7 @@ export function FileTable({
   onRenameFile,
 }: FileTableProps) {
   const [actionFile, setActionFile] = useState<FileItem | null>(null);
+
 
   const handleFileSelect = (fileId: string, checked: boolean) => {
     if (checked) {
@@ -158,7 +111,7 @@ export function FileTable({
         </TableHeader>
         <TableBody>
           {files.map((file) => {
-            const IconComponent = getFileIcon(file);
+            const IconComponent = getFileIconComponent(file);
             const iconColor = getFileIconColor(file);
 
             return (
@@ -184,7 +137,14 @@ export function FileTable({
                       className={cn("size-5 shrink-0", iconColor)}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate" title={file.name}>
+                      <p 
+                        className={cn(
+                          "font-medium truncate",
+                          file.type === "file" && file.downloadUrl && "cursor-pointer hover:text-primary hover:underline"
+                        )}
+                        title={file.name}
+                        onClick={() => file.type === "file" && handleFileDownload(file)}
+                      >
                         {file.name}
                       </p>
                       {file.mimeType && file.mimeType !== "knowledge-base" && (
@@ -220,7 +180,7 @@ export function FileTable({
                 </TableCell>
 
                 <TableCell className="text-sm text-muted-foreground">
-                  {formatDate(file.uploadDate)}
+                  {formatTimeAgo(file.uploadDate)}
                 </TableCell>
 
                 <TableCell className="text-sm text-muted-foreground text-right">
@@ -240,7 +200,7 @@ export function FileTable({
                         Rename
                       </DropdownMenuItem>
                       {file.type === "file" && (
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleFileDownload(file)}>
                           <Download className="size-4 mr-2" />
                           Download
                         </DropdownMenuItem>

@@ -8,6 +8,7 @@ export default [
   route("chat/:id", "routes/chat.$id.tsx"),
   route("knowledge-base", "routes/knowledge-base.tsx"),
   route("image-generator", "routes/image-generator.tsx"),
+  route("ocr-reader", "routes/ocr-reader.tsx"),
   route("automation/workflows", "routes/automation.workflows.tsx"),
   route("automation/templates", "routes/automation.templates.tsx"),
 ] satisfies RouteConfig;

@@ -61,9 +61,9 @@ RUN chmod +x /app/start.sh
 # Expose nginx port (nginx will proxy to backend and frontend)
 EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD bun -e "fetch('http://localhost:3000').then(r => r.status === 200 ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+# # Health check
+# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+#     CMD bun -e "fetch('http://localhost:3000').then(r => r.status === 200 ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
 # Start both processes with detailed logging
 CMD ["/app/start.sh"]

@@ -17,6 +17,16 @@ export const env = {
   // API
   API_PREFIX: process.env.API_PREFIX || "/api",
   CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
+
+  // Storage
+  STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || "minio",
+  
+  // MinIO Configuration
+  MINIO_ENDPOINT: process.env.MINIO_ENDPOINT || "localhost:9000",
+  MINIO_ACCESS_KEY: process.env.MINIO_ACCESS_KEY || "minioadmin",
+  MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY || "minioadmin",
+  MINIO_BUCKET: process.env.MINIO_BUCKET || "athena-files",
+  MINIO_USE_SSL: process.env.MINIO_USE_SSL === "true",
 } as const;
 
 export function validateEnv() {
