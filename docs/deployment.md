@@ -32,16 +32,20 @@ API_PREFIX=/api                 # API route prefix (default: /api)
 CORS_ORIGIN=*                   # CORS origin policy (default: *)
 ```
 
+## Docker Build
+
+Build the Docker image:
+
+```bash
+docker build -t athena .
+```
+
 ## Docker Example Usage
 
 ```bash
-docker run \
-  -e DB_HOST=mydb.example.com \
-  -e DB_PASSWORD=secretpassword \
-  -e ENCRYPTION_KEY=my-secure-encryption-key \
-  -e PORT=8080 \
+docker run --name athena-app -d \
   -e NODE_ENV=production \
-  your-image
+  nevz/athena:latest
 ```
 
 ## Docker Compose Example
@@ -179,6 +183,64 @@ server {
     return 301 https://$server_name$request_uri;
 }
 ```
+
+## MinIO Storage Setup
+
+### Docker Installation
+
+Run MinIO as a Docker container:
+
+```bash
+docker run -d \
+  --name minio \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin123 \
+  -v minio_data:/data \
+  minio/minio server /data --console-address ":9001"
+```
+
+### Docker Compose Setup
+
+Add to your `docker-compose.yml`:
+
+```yaml
+services:
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  minio_data:
+```
+
+### Environment Variables for Athena
+
+Add these environment variables to your Athena configuration:
+
+```bash
+MINIO_ENDPOINT=localhost:9000    # MinIO API endpoint
+MINIO_ACCESS_KEY=minioadmin      # MinIO access key
+MINIO_SECRET_KEY=minioadmin123   # MinIO secret key
+MINIO_BUCKET_NAME=athena-files   # Default bucket name
+MINIO_USE_SSL=false              # Set to true for HTTPS
+```
+
+### Access MinIO Console
+
+- **API Endpoint**: http://localhost:9000
+- **Web Console**: http://localhost:9001
+- **Default Credentials**: minioadmin / minioadmin123
 
 ## Important Notes
 

@@ -1,9 +1,8 @@
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
 import { and, eq } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import { db } from "../db";
 import { chatMessages, chatSessions } from "../db/schema";
+import { StorageFactory } from "../services/storage";
 
 export const filesRoutes = new Elysia({ prefix: "/files" }).get(
   "/:sessionId/:attachmentId",
@@ -67,20 +66,22 @@ export const filesRoutes = new Elysia({ prefix: "/files" }).get(
         };
       }
 
-      // Construct file path
-      const filename = `${attachmentId}_${attachment.filename}`;
-      const filePath = join(
-        process.cwd(),
-        "uploads",
-        "messages",
-        sessionId,
-        filename
-      );
-
       try {
-        // Check if file exists and get stats
-        const fileStats = await stat(filePath);
-        if (!fileStats.isFile()) {
+        const storageProvider = StorageFactory.getStorageProvider();
+        
+        // Use the stored path from MinIO storage
+        if (!attachment.path) {
+          set.status = 404;
+          return {
+            success: false,
+            error: "File path not found - attachment may be from legacy storage",
+          };
+        }
+        const filePath = attachment.path;
+        
+        // Check if file exists
+        const exists = await storageProvider.exists(filePath);
+        if (!exists) {
           set.status = 404;
           return {
             success: false,
@@ -88,8 +89,8 @@ export const filesRoutes = new Elysia({ prefix: "/files" }).get(
           };
         }
 
-        // Read and serve the file
-        const fileBuffer = await readFile(filePath);
+        // Download and serve the file
+        const fileBuffer = await storageProvider.download(filePath);
 
         // Set appropriate headers
         set.headers["Content-Type"] = attachment.mimeType;
@@ -101,11 +102,11 @@ export const filesRoutes = new Elysia({ prefix: "/files" }).get(
           headers: set.headers,
         });
       } catch (fileError) {
-        console.error("File read error:", fileError);
+        console.error("File download error:", fileError);
         set.status = 404;
         return {
           success: false,
-          error: "File not found on disk",
+          error: "File not found or download failed",
         };
       }
     } catch (error) {
