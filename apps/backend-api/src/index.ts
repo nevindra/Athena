@@ -26,10 +26,10 @@ validateEnv();
 const app = new Elysia()
   .use(
     cors({
-      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
+      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map(origin => origin.trim()),
       credentials: env.CORS_ORIGIN !== "*",
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
     })
   )
   .use(swagger())
