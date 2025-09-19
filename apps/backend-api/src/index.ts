@@ -3,10 +3,14 @@ import swagger from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 import { testConnection } from "./config/database";
 import { env, validateEnv } from "./config/env";
+import { StorageFactory } from "./services/storage";
 import { aiRoutes } from "./routes/ai";
 import { configurationsRoutes } from "./routes/configurations";
 import { filesRoutes } from "./routes/files";
+import { knowledgeBaseFilesRoutes } from "./routes/knowledge-base-files";
+import { knowledgeBasesRoutes } from "./routes/knowledge-bases";
 import { sessionRoutes } from "./routes/sessions";
+import { storageRoutes } from "./routes/storage";
 import { systemPromptsRoutes } from "./routes/system-prompts";
 import {
   logApiError,
@@ -22,10 +26,10 @@ validateEnv();
 const app = new Elysia()
   .use(
     cors({
-      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN,
+      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map(origin => origin.trim()),
       credentials: env.CORS_ORIGIN !== "*",
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
     })
   )
   .use(swagger())
@@ -105,6 +109,9 @@ const app = new Elysia()
       .use(aiRoutes)
       .use(sessionRoutes)
       .use(filesRoutes)
+      .use(knowledgeBaseFilesRoutes)
+      .use(knowledgeBasesRoutes)
+      .use(storageRoutes)
       .use(systemPromptsRoutes)
   )
 
@@ -122,6 +129,13 @@ testConnection().then((connected) => {
   }
   logger.success("Database connection established");
 });
+
+// Initialize storage provider on startup to show connection logs
+try {
+  StorageFactory.getStorageProvider();
+} catch (error) {
+  logger.error("Failed to initialize storage provider:", error);
+}
 
 logger.info(
   `🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}`

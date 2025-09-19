@@ -1,8 +1,7 @@
 import { eq } from "drizzle-orm";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { db } from "../db";
 import { chatMessages } from "../db/schema";
+import { StorageFactory } from "../services/storage";
 import type { ChatRequest } from "../services/aiService";
 import {
   generateChatResponse,
@@ -56,15 +55,16 @@ async function fetchMessageAttachments(sessionId: string) {
 
       for (const attachment of message.attachments) {
         try {
-          const filename = `${attachment.id}_${attachment.filename}`;
-          const filePath = join(
-            process.cwd(),
-            "uploads",
-            "messages",
-            sessionId,
-            filename
-          );
-          const fileData = await readFile(filePath);
+          const storageProvider = StorageFactory.getStorageProvider();
+          
+          // Use the stored path from MinIO storage
+          if (!attachment.path) {
+            console.warn(`Attachment ${attachment.id} missing path - skipping`);
+            continue;
+          }
+          const filePath = attachment.path;
+          
+          const fileData = await storageProvider.download(filePath);
 
           messageAttachments.push({
             id: attachment.id,

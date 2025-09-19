@@ -1,5 +1,11 @@
 "use client";
 
+import type {
+  FileCategory,
+  FileDetailsResponse,
+  KnowledgeBaseResponse,
+  StorageStatsResponse,
+} from "@athena/shared";
 import {
   Database,
   FileSpreadsheet,
@@ -13,15 +19,26 @@ import {
   Video,
   Workflow,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
+import { knowledgeBaseApi } from "~/services/knowledge-base-api";
+import { knowledgeBaseFilesApi } from "~/services/knowledge-base-files-api";
+import { storageApi } from "~/services/storage-api";
 import { CategorySidebar } from "./category-sidebar";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { FileTable } from "./file-table";
 import { FileUpload } from "./file-upload";
+import { FileContentCard } from "~/components/ui/content-card";
+import {
+  formatFileSize,
+  formatTimeAgo,
+  getFileTypeDisplay,
+  handleFileDownload,
+  renderFilePreview,
+} from "./file-preview-utils";
 
 export interface FileItem {
   id: string;
@@ -32,6 +49,7 @@ export interface FileItem {
   path: string;
   mimeType?: string;
   thumbnail?: string;
+  downloadUrl?: string;
   uploadedBy?: {
     name: string;
     avatar?: string;
@@ -39,130 +57,208 @@ export interface FileItem {
   };
 }
 
-export type FileCategory =
-  | "all"
-  | "documents"
-  | "images"
-  | "audio"
-  | "videos"
-  | "knowledge-base";
-
 export function FileManager() {
-  const [files, setFiles] = useState<FileItem[]>([
-    {
-      id: "1",
-      name: "prabowo.jpg",
-      type: "file",
-      size: 101888,
-      uploadDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      path: "/",
-      mimeType: "image/jpeg",
-      uploadedBy: {
-        name: "Amelie Laurent",
-        email: "amelie@huntedlux.com",
-        avatar: "AL",
-      },
-    },
-    {
-      id: "2",
-      name: "Hukum Pidana",
-      type: "folder",
-      uploadDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      path: "/knowledge-base",
-      mimeType: "knowledge-base",
-      uploadedBy: {
-        name: "Armour Foley",
-        email: "armour@huntedlux.co",
-        avatar: "AF",
-      },
-    },
-    {
-      id: "3",
-      name: "Dashboard tech requirements",
-      type: "file",
-      size: 225280,
-      uploadDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      path: "/",
-      mimeType: "application/pdf",
-      uploadedBy: {
-        name: "Amelie Laurent",
-        email: "amelie@huntedlux.com",
-        avatar: "AL",
-      },
-    },
-    {
-      id: "4",
-      name: "Q4_2023 Reporting",
-      type: "file",
-      size: 1228800,
-      uploadDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      path: "/",
-      mimeType: "application/pdf",
-      uploadedBy: {
-        name: "Armour Foley",
-        email: "armour@huntedlux.co",
-        avatar: "AF",
-      },
-    },
-  ]);
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseResponse[]>([]);
+  const [storageStats, setStorageStats] = useState<StorageStatsResponse | null>(null);
+  const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>("all");
-  const [isCreateKnowledgeBaseOpen, setIsCreateKnowledgeBaseOpen] =
-    useState(false);
+  const [isCreateKnowledgeBaseOpen, setIsCreateKnowledgeBaseOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [showKnowledgeBaseContent, setShowKnowledgeBaseContent] =
-    useState(false);
+  const [showKnowledgeBaseContent, setShowKnowledgeBaseContent] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
-  const handleFileUpload = (uploadedFiles: File[]) => {
-    const newFiles: FileItem[] = uploadedFiles.map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      type: "file" as const,
-      size: file.size,
-      uploadDate: new Date(),
-      path: "/",
-      mimeType: file.type,
-      uploadedBy: {
-        name: "Current User",
-        email: "user@example.com",
-        avatar: "CU",
-      },
-    }));
+  // Convert API file response to local FileItem format
+  const convertToFileItem = (apiFile: any): FileItem => ({
+    id: apiFile.id,
+    name: apiFile.originalName || apiFile.name,
+    type: "file",
+    size: apiFile.size,
+    uploadDate: new Date(apiFile.createdAt),
+    path: apiFile.path,
+    mimeType: apiFile.mimeType,
+    thumbnail: apiFile.thumbnailUrl,
+    downloadUrl: apiFile.downloadUrl,
+    uploadedBy: apiFile.uploadedBy ? {
+      name: apiFile.uploadedBy.name,
+      email: apiFile.uploadedBy.email,
+      avatar: apiFile.uploadedBy.avatar || apiFile.uploadedBy.name?.charAt(0)?.toUpperCase(),
+    } : undefined,
+  });
 
-    setFiles((prev) => [...prev, ...newFiles]);
-  };
+  // Load initial data
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const handleCreateKnowledgeBase = (name: string) => {
-    const newKnowledgeBase: FileItem = {
-      id: crypto.randomUUID(),
-      name,
-      type: "folder",
-      uploadDate: new Date(),
-      path: "/knowledge-base",
-      mimeType: "knowledge-base",
-      uploadedBy: {
-        name: "Current User",
-        email: "user@example.com",
-        avatar: "CU",
-      },
+        // Load files, knowledge bases, and storage stats in parallel
+        const [filesResponse, kbResponse, statsResponse, recentResponse] = await Promise.all([
+          knowledgeBaseFilesApi.getFiles({ limit: 50 }),
+          knowledgeBaseApi.getKnowledgeBases({ hierarchy: true }),
+          storageApi.getStorageStats(),
+          knowledgeBaseFilesApi.getRecentFiles(3),
+        ]);
+
+        const fileItems = filesResponse?.files ? filesResponse.files.map(convertToFileItem) : [];
+        const recentItems = Array.isArray(recentResponse) ? recentResponse.map(convertToFileItem) : [];
+
+        // Add knowledge bases as folder items
+        if (Array.isArray(kbResponse)) {
+          const kbItems: FileItem[] = kbResponse.map((kb) => ({
+            id: kb.id,
+            name: kb.name,
+            type: "folder",
+            uploadDate: new Date(kb.createdAt),
+            path: kb.path,
+            mimeType: "knowledge-base",
+            uploadedBy: {
+              name: "System",
+              avatar: "S",
+            },
+          }));
+          setKnowledgeBases(kbResponse);
+          setFiles([...fileItems, ...kbItems]);
+        } else if (kbResponse && typeof kbResponse === 'object' && 'knowledgeBases' in kbResponse) {
+          // Handle paginated response format
+          const kbItems: FileItem[] = kbResponse.knowledgeBases.map((kb) => ({
+            id: kb.id,
+            name: kb.name,
+            type: "folder",
+            uploadDate: new Date(kb.createdAt),
+            path: kb.path,
+            mimeType: "knowledge-base",
+            uploadedBy: {
+              name: "System",
+              avatar: "S",
+            },
+          }));
+          setKnowledgeBases(kbResponse.knowledgeBases);
+          setFiles([...fileItems, ...kbItems]);
+        } else {
+          setFiles(fileItems);
+        }
+
+        setRecentFiles(recentItems);
+        setStorageStats(statsResponse);
+      } catch (err) {
+        console.error("Failed to load data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setFiles((prev) => [...prev, newKnowledgeBase]);
+    loadInitialData();
+  }, []);
+
+  const handleFileUpload = async (uploadedFiles: File[]) => {
+    try {
+      const response = await knowledgeBaseFilesApi.uploadFiles(uploadedFiles);
+
+      if (response?.success) {
+        // Reload both files and recent files after successful upload
+        const [filesResponse, recentResponse] = await Promise.all([
+          knowledgeBaseFilesApi.getFiles({ limit: 50 }),
+          knowledgeBaseFilesApi.getRecentFiles(3),
+        ]);
+
+        const fileItems = filesResponse?.files ? filesResponse.files.map(convertToFileItem) : [];
+        const recentItems = Array.isArray(recentResponse) ? recentResponse.map(convertToFileItem) : [];
+
+        setFiles((prev) => {
+          const nonFiles = prev.filter(item => item.type === "folder");
+          return [...fileItems, ...nonFiles];
+        });
+
+        setRecentFiles(recentItems);
+
+        // Clear error on success
+        setError(null);
+      }
+
+      if (response?.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map(e => `${e.fileName}: ${e.error}`).join(", ");
+        setError(`Some files failed to upload: ${errorMessage}`);
+      }
+    } catch (err) {
+      console.error("File upload error:", err);
+      setError(err instanceof Error ? err.message : "Failed to upload files");
+    }
+  };
+
+  const handleCreateKnowledgeBase = async (name: string) => {
+    try {
+      const newKb = await knowledgeBaseApi.createKnowledgeBase({
+        name,
+        description: `Knowledge base created on ${new Date().toLocaleDateString()}`,
+      });
+
+      if (!newKb || !newKb.id) {
+        throw new Error("Invalid response from server");
+      }
+
+      const kbItem: FileItem = {
+        id: newKb.id,
+        name: newKb.name,
+        type: "folder",
+        uploadDate: new Date(newKb.createdAt),
+        path: newKb.path,
+        mimeType: "knowledge-base",
+        uploadedBy: {
+          name: "Current User",
+          avatar: "CU",
+        },
+      };
+
+      setFiles((prev) => [...prev, kbItem]);
+      setKnowledgeBases((prev) => [...prev, newKb]);
+
+      // Clear error on success
+      setError(null);
+    } catch (err) {
+      console.error("Failed to create knowledge base:", err);
+      setError(err instanceof Error ? err.message : "Failed to create knowledge base");
+    }
+  };
+
+  // Handle search with API
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      // Reload all files if search is cleared
+      const filesResponse = await knowledgeBaseFilesApi.getFiles({ limit: 50 });
+      const fileItems = filesResponse?.files ? filesResponse.files.map(convertToFileItem) : [];
+      setFiles((prev) => {
+        const kbItems = prev.filter(item => item.mimeType === "knowledge-base");
+        return [...fileItems, ...kbItems];
+      });
+      return;
+    }
+
+    try {
+      const searchResponse = await knowledgeBaseFilesApi.searchFiles({ q: query });
+      const searchResults = searchResponse?.files ? searchResponse.files.map(convertToFileItem) : [];
+
+      // Keep knowledge bases in the results
+      const kbItems = files.filter(item => item.mimeType === "knowledge-base");
+      setFiles([...searchResults, ...kbItems]);
+    } catch (err) {
+      console.error("Search error:", err);
+      setError(err instanceof Error ? err.message : "Search failed");
+    }
   };
 
   const getFilesByCategory = (category: FileCategory): FileItem[] => {
     return files.filter((file) => {
-      const matchesSearch = file.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-
       switch (category) {
         case "all":
-          return matchesSearch;
+          return true;
         case "documents":
           return (
-            matchesSearch &&
             file.mimeType &&
             (file.mimeType.includes("pdf") ||
               file.mimeType.includes("word") ||
@@ -170,75 +266,97 @@ export function FileManager() {
               file.mimeType === "text/csv")
           );
         case "images":
-          return matchesSearch && file.mimeType?.startsWith("image/");
+          return file.mimeType?.startsWith("image/");
         case "audio":
-          return matchesSearch && file.mimeType?.startsWith("audio/");
+          return file.mimeType?.startsWith("audio/");
         case "videos":
-          return matchesSearch && file.mimeType?.startsWith("video/");
+          return file.mimeType?.startsWith("video/");
         case "knowledge-base":
           return (
-            matchesSearch &&
-            (file.mimeType === "knowledge-base" ||
-              file.path.startsWith("/knowledge-base"))
+            file.mimeType === "knowledge-base" ||
+            file.path.startsWith("/knowledge-base")
           );
         default:
-          return matchesSearch;
+          return true;
       }
     });
   };
 
-  const handleDeleteFiles = (fileIds: string[]) => {
-    setFiles((prev) => prev.filter((file) => !fileIds.includes(file.id)));
-    setSelectedFiles([]);
+  const handleDeleteFiles = async (fileIds: string[]) => {
+    try {
+      // Delete files via API
+      await Promise.all(
+        fileIds.map(async (fileId) => {
+          const file = files.find(f => f.id === fileId);
+          if (file?.type === "file") {
+            await knowledgeBaseFilesApi.deleteFile(fileId);
+          } else if (file?.mimeType === "knowledge-base") {
+            await knowledgeBaseApi.deleteKnowledgeBase(fileId);
+          }
+        })
+      );
+
+      // Remove from local state
+      setFiles((prev) => prev.filter((file) => !fileIds.includes(file.id)));
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error("Failed to delete files:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete files");
+    }
   };
 
-  const handleRenameFile = (fileId: string, newName: string) => {
-    setFiles((prev) =>
-      prev.map((file) =>
-        file.id === fileId ? { ...file, name: newName } : file
-      )
-    );
+  const handleRenameFile = async (fileId: string, newName: string) => {
+    try {
+      const file = files.find(f => f.id === fileId);
+
+      if (file?.type === "file") {
+        await knowledgeBaseFilesApi.updateFile(fileId, { name: newName });
+      } else if (file?.mimeType === "knowledge-base") {
+        await knowledgeBaseApi.updateKnowledgeBase(fileId, { name: newName });
+      }
+
+      // Update local state
+      setFiles((prev) =>
+        prev.map((file) =>
+          file.id === fileId ? { ...file, name: newName } : file
+        )
+      );
+    } catch (err) {
+      console.error("Failed to rename file:", err);
+      setError(err instanceof Error ? err.message : "Failed to rename file");
+    }
   };
 
   const filteredFiles = getFilesByCategory(selectedCategory);
-  const totalFileSize = files.reduce(
-    (total, file) => total + (file.size || 0),
-    0
-  );
-  const maxStorage = 10 * 1024 * 1024;
-  const recentFiles = files
-    .sort((a, b) => b.uploadDate.getTime() - a.uploadDate.getTime())
-    .slice(0, 3);
+  const totalFileSize = storageStats?.totalUsed || 0;
+  const maxStorage = storageStats?.totalLimit || (10 * 1024 * 1024);
 
-  const createOptions = [
-    {
-      id: "knowledge-base",
-      label: "New knowledge base",
-      icon: Database,
-      action: () => setIsCreateKnowledgeBaseOpen(true),
-    },
-    {
-      id: "dataset",
-      label: "New dataset",
-      icon: FileText,
-      action: () => console.log("Create dataset"),
-    },
-    {
-      id: "project",
-      label: "New project",
-      icon: Workflow,
-      action: () => console.log("Create project"),
-    },
-    {
-      id: "team",
-      label: "New team",
-      icon: Users,
-      action: () => console.log("Create team"),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="flex h-full bg-background items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading knowledge base...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full bg-background">
+      {/* Error Display */}
+      {error && (
+        <div className="absolute top-4 right-4 z-50 bg-destructive text-destructive-foreground px-4 py-2 rounded-md">
+          <button
+            onClick={() => setError(null)}
+            className="float-right ml-2 text-lg leading-none"
+          >
+            ×
+          </button>
+          {error}
+        </div>
+      )}
+
       {/* Sidebar - Category Navigation */}
       <div className="w-64 border-r border-border/50 bg-card">
         <CategorySidebar
@@ -268,7 +386,15 @@ export function FileManager() {
                 <Input
                   placeholder="Search Files"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    // Debounce search
+                    setTimeout(() => {
+                      if (e.target.value === searchQuery) {
+                        handleSearch(e.target.value);
+                      }
+                    }, 500);
+                  }}
                   className="pl-9 pr-16 w-80"
                 />
               </div>
@@ -282,132 +408,37 @@ export function FileManager() {
           </div>
         </div>
 
-        {/* Project Creation Cards */}
-        <div className="p-6 border-b border-border/30">
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {createOptions.map((option) => {
-              const IconComponent = option.icon;
-              return (
-                <Button
-                  key={option.id}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
-                  onClick={option.action}
-                >
-                  <IconComponent className="size-6 text-muted-foreground" />
-                  <span className="text-sm font-medium">{option.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Recently Upload Section */}
         <div className="p-6 border-b border-border/30">
-          <h2 className="text-lg font-semibold mb-4">Recently Upload</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {recentFiles.map((file) => {
-              const getFileIcon = (mimeType?: string, fileType?: string) => {
-                if (fileType === "folder" || mimeType === "knowledge-base") {
-                  return { icon: Folder, color: "text-blue-500" };
-                }
-                if (!mimeType)
-                  return { icon: FileText, color: "text-muted-foreground" };
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recently Uploaded</h2>
 
-                if (mimeType.includes("pdf")) {
-                  return { icon: FileText, color: "text-red-500" };
-                }
-                if (mimeType.startsWith("image/")) {
-                  return { icon: Image, color: "text-green-500" };
-                }
-                if (
-                  mimeType.includes("spreadsheet") ||
-                  mimeType === "text/csv"
-                ) {
-                  return { icon: FileSpreadsheet, color: "text-emerald-500" };
-                }
-                if (mimeType.startsWith("audio/")) {
-                  return { icon: Music, color: "text-purple-500" };
-                }
-                if (mimeType.startsWith("video/")) {
-                  return { icon: Video, color: "text-orange-500" };
-                }
-                if (mimeType.includes("word")) {
-                  return { icon: FileText, color: "text-blue-600" };
-                }
-                return { icon: FileText, color: "text-muted-foreground" };
-              };
-
-              const getFileTypeDisplay = (mimeType?: string) => {
-                if (!mimeType) return "Unknown";
-                if (mimeType === "knowledge-base") return "Knowledge Base";
-                if (mimeType.includes("pdf")) return "PDF";
-                if (mimeType.startsWith("image/")) return "Image";
-                if (mimeType.includes("spreadsheet")) return "Spreadsheet";
-                if (mimeType === "text/csv") return "CSV";
-                if (mimeType.startsWith("audio/")) return "Audio";
-                if (mimeType.startsWith("video/")) return "Video";
-                if (mimeType.includes("word")) return "Document";
-                return mimeType.split("/")[1]?.toUpperCase() || "File";
-              };
-
-              const formatFileSize = (bytes?: number) => {
-                if (!bytes) return "";
-                if (bytes === 0) return "0 Bytes";
-                const k = 1024;
-                const sizes = ["Bytes", "KB", "MB", "GB"];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return (
-                  Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1)) +
-                  " " +
-                  sizes[i]
-                );
-              };
-
-              const { icon: IconComponent, color } = getFileIcon(
-                file.mimeType,
-                file.type
-              );
-
-              return (
-                <div
-                  key={file.id}
-                  className="bg-card border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded flex items-center justify-center">
-                      <IconComponent className={`size-5 ${color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)} •{" "}
-                        {getFileTypeDisplay(file.mimeType)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
+
+          {recentFiles.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Upload className="size-8 mx-auto mb-2 opacity-50" />
+              <p>No recent uploads</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {recentFiles.map((file) => (
+                <FileContentCard
+                  key={file.id}
+                  fileName={file.name}
+                  fileSize={formatFileSize(file.size)}
+                  fileType={getFileTypeDisplay(file.mimeType)}
+                  timeAgo={formatTimeAgo(file.uploadDate)}
+                  preview={renderFilePreview(file)}
+                  onClick={() => handleFileDownload(file)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* All Files Section Header */}
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold">All files</h2>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="show-knowledge-base"
-                checked={showKnowledgeBaseContent}
-                onCheckedChange={setShowKnowledgeBaseContent}
-              />
-              <Label htmlFor="show-knowledge-base" className="text-sm">
-                Show content in Knowledge Base
-              </Label>
-            </div>
-          </div>
-
           {/* Filter Tabs */}
           <div className="flex items-center gap-2 mb-4">
             <Button
@@ -476,7 +507,7 @@ export function FileManager() {
         <div className="border-t border-border/30 p-4 bg-muted/20">
           <div className="flex items-center justify-between text-sm">
             <div>
-              <span className="text-muted-foreground">Team storage</span>
+              <span className="text-muted-foreground">Total storage</span>
               <span className="ml-2">
                 {(totalFileSize / (1024 * 1024)).toFixed(1)} MB /{" "}
                 {(maxStorage / (1024 * 1024)).toFixed(0)} MB
@@ -484,13 +515,33 @@ export function FileManager() {
             </div>
 
             <div>
-              <span className="text-muted-foreground">Embedding storage</span>
-              <span className="ml-2">3 / 100</span>
+              <span className="text-muted-foreground">Files</span>
+              <span className="ml-2">
+                {storageStats?.breakdown?.files ?
+                  (storageStats.breakdown.files / (1024 * 1024)).toFixed(1) + " MB" :
+                  "0 MB"
+                }
+              </span>
             </div>
 
             <div>
-              <span className="text-muted-foreground">Team members</span>
-              <span className="ml-2">4 active</span>
+              <span className="text-muted-foreground">Knowledge bases</span>
+              <span className="ml-2">
+                {storageStats?.breakdown?.knowledgeBases ?
+                  (storageStats.breakdown.knowledgeBases / (1024 * 1024)).toFixed(1) + " MB" :
+                  "0 MB"
+                }
+              </span>
+            </div>
+
+            <div>
+              <span className="text-muted-foreground">Trash</span>
+              <span className="ml-2">
+                {storageStats?.breakdown?.trash ?
+                  (storageStats.breakdown.trash / (1024 * 1024)).toFixed(1) + " MB" :
+                  "0 MB"
+                }
+              </span>
             </div>
           </div>
         </div>

@@ -1,6 +1,4 @@
 import { desc, eq } from "drizzle-orm";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { ulid } from "ulid";
 import { db } from "../db";
 import {
@@ -8,6 +6,7 @@ import {
   chatMessages,
   chatSessions,
 } from "../db/schema";
+import { StorageFactory } from "../services/storage";
 
 export interface CreateSessionRequest {
   userId: string;
@@ -104,32 +103,25 @@ export async function handleAddMessage(
   // Handle file uploads if files are provided
   if (files && files.length > 0) {
     attachments = [];
-    const messageUploadDir = join(
-      process.cwd(),
-      "uploads",
-      "messages",
-      sessionId
-    );
-
-    // Create upload directory
-    await mkdir(messageUploadDir, { recursive: true });
+    const storageProvider = StorageFactory.getStorageProvider();
+    const uploadPath = `messages/${sessionId}`;
 
     for (const file of files) {
-      const attachmentId = ulid();
-      const filename = `${attachmentId}_${file.name}`;
-      const filePath = join(messageUploadDir, filename);
-
-      // Save file to filesystem
-      const arrayBuffer = await file.arrayBuffer();
-      await writeFile(filePath, new Uint8Array(arrayBuffer));
-
-      // Add attachment metadata
-      attachments.push({
-        id: attachmentId,
-        filename: file.name,
-        mimeType: file.type,
-        size: file.size,
-      });
+      try {
+        const uploadResult = await storageProvider.upload(file, uploadPath);
+        
+        // Add attachment metadata
+        attachments.push({
+          id: uploadResult.id,
+          filename: uploadResult.filename,
+          mimeType: uploadResult.mimeType,
+          size: uploadResult.size,
+          path: uploadResult.path,
+        });
+      } catch (error) {
+        console.error(`Failed to upload file ${file.name}:`, error);
+        throw new Error(`Failed to upload file: ${file.name}`);
+      }
     }
   }
 
