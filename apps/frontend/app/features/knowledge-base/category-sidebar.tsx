@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  ChevronDown,
-  ChevronRight,
   FileText,
   Folder,
   Image,
@@ -10,7 +8,6 @@ import {
   Plus,
   Video,
 } from "lucide-react";
-import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import type { FileCategory, FileItem } from "./file-manager";

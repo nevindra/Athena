@@ -10,14 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { 
-  X, 
-  Search, 
-  Clock, 
-  Heart, 
+import {
+  X,
+  Search,
+  Clock,
+  Heart,
   Download,
   Trash2,
-  Filter,
   Calendar
 } from "lucide-react";
 import {

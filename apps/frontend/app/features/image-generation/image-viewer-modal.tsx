@@ -11,16 +11,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { 
-  X, 
-  Download, 
-  Share2, 
-  Heart, 
+import {
+  X,
+  Download,
+  Share2,
+  Heart,
   Copy,
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Maximize,
   ExternalLink,
   Info
 } from "lucide-react";

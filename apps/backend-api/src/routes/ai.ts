@@ -57,8 +57,8 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
         data: t.Optional(
           t.Object({
             message: t.String(),
-            model: t.String(),
             finishReason: t.String(),
+            reasoning: t.Optional(t.String()),
             usage: t.Optional(
               t.Object({
                 promptTokens: t.Number(),

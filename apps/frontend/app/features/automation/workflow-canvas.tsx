@@ -37,7 +37,7 @@ interface WorkflowCanvasProps {
   selectedNodeType: string | null;
 }
 
-export function WorkflowCanvas({ selectedNodeType }: WorkflowCanvasProps) {
+export function WorkflowCanvas(_: WorkflowCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 

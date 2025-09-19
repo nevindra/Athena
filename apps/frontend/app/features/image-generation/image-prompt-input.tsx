@@ -53,9 +53,6 @@ export function ImagePromptInput({ onGenerate, isGenerating }: ImagePromptInputP
     }
   };
 
-  const insertSuggestion = (suggestion: string) => {
-    setPrompt(suggestion);
-  };
 
   const selectedModelData = imageModels.find(m => m.id === selectedModel);
 

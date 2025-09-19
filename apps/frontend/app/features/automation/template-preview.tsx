@@ -2,26 +2,26 @@
 
 import {
   Background,
-  MiniMap,
-  ReactFlow,
-  type Node,
   type Edge,
+  MiniMap,
+  type Node,
+  ReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
+  Activity,
   Brain,
-  Target,
+  Briefcase,
+  Calendar,
+  Clock,
+  Download,
+  ExternalLink,
   FileCheck,
   Link,
-  Calendar,
-  Briefcase,
-  Download,
   Star,
-  Clock,
+  Target,
   User,
-  Activity,
-  X,
-  ExternalLink
+  X
 } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "~/components/ui/badge";
@@ -36,9 +36,9 @@ import {
 } from "~/components/ui/dialog";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
-import { TriggerNode } from "./node-types/trigger-node";
 import { ActionNode } from "./node-types/action-node";
 import { LogicNode } from "./node-types/logic-node";
+import { TriggerNode } from "./node-types/trigger-node";
 import type { WorkflowTemplate } from "./types";
 
 interface TemplatePreviewProps {
@@ -117,7 +117,7 @@ export function TemplatePreview({ template, open, onOpenChange, onUseTemplate }:
                   </div>
                 </div>
               </div>
-              
+
               <DialogTitle className="text-2xl font-bold mb-2">
                 {template.name}
               </DialogTitle>
@@ -125,7 +125,7 @@ export function TemplatePreview({ template, open, onOpenChange, onUseTemplate }:
                 {template.longDescription || template.description}
               </DialogDescription>
             </div>
-            
+
             <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
               <X className="size-4" />
             </Button>
@@ -188,7 +188,7 @@ export function TemplatePreview({ template, open, onOpenChange, onUseTemplate }:
             <div className="p-4 border-b">
               <h3 className="font-semibold mb-2">Template Details</h3>
             </div>
-            
+
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {/* Tags */}
@@ -213,7 +213,7 @@ export function TemplatePreview({ template, open, onOpenChange, onUseTemplate }:
                 <div>
                   <h4 className="text-sm font-medium mb-2">Workflow Structure</h4>
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    {template.workflow.nodes.map((node, index) => (
+                    {template.workflow.nodes.map((node) => (
                       <div key={node.id} className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-muted" />
                         <span>{node.data.label}</span>

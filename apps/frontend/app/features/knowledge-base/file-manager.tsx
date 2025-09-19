@@ -5,7 +5,6 @@ import {
   FileSpreadsheet,
   FileText,
   Folder,
-  FolderPlus,
   Image,
   Music,
   Search,

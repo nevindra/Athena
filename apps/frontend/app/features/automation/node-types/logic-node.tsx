@@ -21,7 +21,6 @@ const getIcon = (nodeType: string) => {
 
 export function LogicNode({ data, selected }: NodeProps<LogicNodeData>) {
   const Icon = getIcon(data.nodeType);
-  const isSwitch = data.nodeType === "logic-switch";
 
   return (
     <div className={`

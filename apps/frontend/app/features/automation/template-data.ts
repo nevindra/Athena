@@ -1,21 +1,21 @@
 import type { TemplateCategoryInfo, WorkflowTemplate } from "./types";
 
-exBrainst templateCategories: TemplateCategoryInfo[] = [
-  Briefcase
-  Calendar: "ai-data",
-  Database: "AI & Data",
-  FileCheckn: "AI-powered workflows and data processing",
-  FileTextn: "Brain",
-  Linkr: "text-purple-600",
-  Mail: "bg-purple-50 border-purple-200",
-  Share2
-  ShoppingCart
-  Targetrketing",
+export const templateCategories: TemplateCategoryInfo[] = [
+  {
+    id: "ai-data",
+    name: "AI & Data",
+    description: "AI-powered workflows and data processing",
+    icon: "Brain",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50 border-purple-200",
+  },
+  {
+    id: "marketing",
     name: "Marketing",
-  descriptioTemplateCategoryInfognWorkflowTemplateutomation",
+    description: "Campaign management and marketing automation",
     icon: "Target",
-  color: "text-pink-600",
-  bgColor: "bg-pink-50 border-pink-200",
+    color: "text-pink-600",
+    bgColor: "bg-pink-50 border-pink-200",
   },
   {
     id: "document-ops",
