@@ -1,3 +1,5 @@
+import { Clock, Plus, Share } from "lucide-react";
+import { useLocation, useNavigate } from "react-router";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,8 +10,7 @@ import {
 } from "~/components/ui/breadcrumb";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
-import { Clock, Plus, Share } from "lucide-react";
-import { useNavigate } from "react-router";
+import { ApiRegistrationDialog } from "~/features/api-management/api-registration-dialog";
 
 interface BreadcrumbItemData {
   label: string;
@@ -25,14 +26,16 @@ interface AppHeaderProps {
   isHistoryOpen?: boolean;
 }
 
-export function AppHeader({ 
-  breadcrumbs, 
-  className, 
-  showHistoryToggle, 
-  onHistoryToggle, 
-  isHistoryOpen 
+export function AppHeader({
+  breadcrumbs,
+  className,
+  showHistoryToggle,
+  onHistoryToggle,
+  isHistoryOpen
 }: AppHeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isApiManagementRoute = location.pathname.startsWith('/management-api');
 
   const handleNewChat = () => {
     navigate("/");
@@ -74,12 +77,17 @@ export function AppHeader({
             </Breadcrumb>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
+          {/* API Registration Button - only show on api-management routes */}
+          {isApiManagementRoute && (
+            <ApiRegistrationDialog />
+          )}
+
           {/* New Chat Button */}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleNewChat}
             className="flex items-center gap-2"
           >
@@ -88,9 +96,9 @@ export function AppHeader({
           </Button>
 
           {/* Share Button */}
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleShare}
             className="flex items-center gap-2"
           >
@@ -100,9 +108,9 @@ export function AppHeader({
 
           {/* History Toggle */}
           {showHistoryToggle && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onHistoryToggle}
               className={`flex items-center gap-2 ${isHistoryOpen ? 'bg-muted' : ''}`}
             >

@@ -9,6 +9,8 @@ export default [
   route("knowledge-base", "routes/knowledge-base.tsx"),
   route("image-generator", "routes/image-generator.tsx"),
   route("ocr-reader", "routes/ocr-reader.tsx"),
+  route("management-api/monitor", "routes/api-management.monitor.tsx"),
+  route("management-api/history", "routes/api-management.history.tsx"),
   route("automation/workflows", "routes/automation.workflows.tsx"),
   route("automation/templates", "routes/automation.templates.tsx"),
 ] satisfies RouteConfig;

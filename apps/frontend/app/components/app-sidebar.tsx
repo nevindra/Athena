@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Bot, Home, Image, ScanText, Workflow } from "lucide-react";
+import { BookOpen, Bot, Globe, Home, Image, ScanText, Workflow } from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "@/components/navigation/nav-main";
@@ -55,6 +55,21 @@ const data = {
       icon: ScanText,
     },
     {
+      title: "API Management",
+      url: "#",
+      icon: Globe,
+      items: [
+        {
+          title: "Monitor APIs",
+          url: "/management-api/monitor",
+        },
+        {
+          title: "API History",
+          url: "/management-api/history",
+        },
+      ],
+    },
+    {
       title: "Automation",
       url: "#",
       icon: Workflow,
@@ -98,8 +113,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup className="px-3 py-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
           <SidebarMenu className="space-y-1 group-data-[collapsible=icon]:space-y-2 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:items-center">
             <SidebarMenuItem className="relative group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-              <SidebarMenuButton 
-                tooltip="Home" 
+              <SidebarMenuButton
+                tooltip="Home"
                 asChild
                 className="w-full justify-start px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-sidebar-accent/80 hover:scale-[1.02] active:scale-[0.98] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:p-0"
               >
