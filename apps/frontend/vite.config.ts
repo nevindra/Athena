@@ -17,29 +17,9 @@ export default defineConfig({
       }
     }
   },
-  preview: {
-    port: 5173,
-    host: true,
-  },
-  build: {
-    commonjsOptions: { transformMixedEsModules: true },
-    outDir: 'dist',
-    sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['@react-router/dev'],
-        }
-      }
-    }
-  },
-  resolve:
-    process.env.NODE_ENV === "development"
-      ? {}
-      : {
-          alias: {
-            "react-dom/server": "react-dom/server.node",
-          },
-        },
+  resolve: {
+    alias: process.env.NODE_ENV === 'production' ? {
+      "react-dom/server": "react-dom/server.node",
+    } : {},
+  }
 });

@@ -14,12 +14,11 @@ import type {
 } from "@athena/shared";
 import { apiClient, makeApiCall } from "~/lib/api-client";
 
-// Demo user ID (ULID format) - in a real app, this would come from auth
-export const DEMO_USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
 
 export const knowledgeBaseFilesApi = {
   // Upload files directly
   async uploadFiles(
+    userId: string,
     files: File[],
     options?: {
       knowledgeBaseId?: string;
@@ -55,7 +54,7 @@ export const knowledgeBaseFilesApi = {
 
     return makeApiCall(() =>
       apiClient
-        .post(`kb-files/upload?userId=${DEMO_USER_ID}`, {
+        .post(`kb-files/upload?userId=${userId}`, {
           body: formData,
         })
         .json<ApiResponse<FileUploadResponse>>()
@@ -64,11 +63,12 @@ export const knowledgeBaseFilesApi = {
 
   // Get presigned upload URL for large files
   async getPresignedUploadUrl(
+    userId: string,
     data: PresignedUploadRequest
   ): Promise<PresignedUploadResponse> {
     return makeApiCall(() =>
       apiClient
-        .post(`kb-files/upload/presigned?userId=${DEMO_USER_ID}`, {
+        .post(`kb-files/upload/presigned?userId=${userId}`, {
           json: data,
         })
         .json<ApiResponse<PresignedUploadResponse>>()
@@ -76,8 +76,8 @@ export const knowledgeBaseFilesApi = {
   },
 
   // List files with filtering and pagination
-  async getFiles(query?: FileListQuery): Promise<FileListResponse> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+  async getFiles(userId: string, query?: FileListQuery): Promise<FileListResponse> {
+    const params = new URLSearchParams({ userId });
     
     if (query?.page) params.append("page", query.page.toString());
     if (query?.limit) params.append("limit", query.limit.toString());
@@ -96,22 +96,23 @@ export const knowledgeBaseFilesApi = {
   },
 
   // Get file details by ID
-  async getFile(id: string): Promise<FileDetailsResponse> {
+  async getFile(userId: string, id: string): Promise<FileDetailsResponse> {
     return makeApiCall(() =>
       apiClient
-        .get(`kb-files/${id}?userId=${DEMO_USER_ID}`)
+        .get(`kb-files/${id}?userId=${userId}`)
         .json<ApiResponse<FileDetailsResponse>>()
     );
   },
 
   // Update file metadata
   async updateFile(
+    userId: string,
     id: string,
     data: FileUpdateRequest
   ): Promise<FileDetailsResponse> {
     return makeApiCall(() =>
       apiClient
-        .put(`kb-files/${id}?userId=${DEMO_USER_ID}`, {
+        .put(`kb-files/${id}?userId=${userId}`, {
           json: data,
         })
         .json<ApiResponse<FileDetailsResponse>>()
@@ -120,10 +121,11 @@ export const knowledgeBaseFilesApi = {
 
   // Delete a file (soft delete by default)
   async deleteFile(
+    userId: string,
     id: string,
     hardDelete = false
   ): Promise<FileDeleteResponse> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (hardDelete) params.append("hard", "true");
 
     return makeApiCall(() =>
@@ -134,15 +136,15 @@ export const knowledgeBaseFilesApi = {
   },
 
   // Download a file
-  async downloadFile(id: string): Promise<Blob> {
-    const response = await apiClient.get(`kb-files/${id}/download?userId=${DEMO_USER_ID}`);
+  async downloadFile(userId: string, id: string): Promise<Blob> {
+    const response = await apiClient.get(`kb-files/${id}/download?userId=${userId}`);
     return response.blob();
   },
 
   // Search files with advanced filters
-  async searchFiles(query: SearchQuery): Promise<FileListResponse> {
+  async searchFiles(userId: string, query: SearchQuery): Promise<FileListResponse> {
     const params = new URLSearchParams({
-      userId: DEMO_USER_ID,
+      userId,
       q: query.q,
     });
 
@@ -181,10 +183,11 @@ export const knowledgeBaseFilesApi = {
 
   // Find similar files
   async findSimilarFiles(
+    userId: string,
     id: string,
     limit?: number
   ): Promise<Array<FileDetailsResponse & { similarity: number }>> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (limit) params.append("limit", limit.toString());
 
     return makeApiCall(() =>
@@ -196,9 +199,10 @@ export const knowledgeBaseFilesApi = {
 
   // Get recent files
   async getRecentFiles(
+    userId: string,
     limit?: number
   ): Promise<FileDetailsResponse[]> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (limit) params.append("limit", limit.toString());
 
     return makeApiCall(() =>
@@ -210,9 +214,10 @@ export const knowledgeBaseFilesApi = {
 
   // Get popular files
   async getPopularFiles(
+    userId: string,
     limit?: number
   ): Promise<FileDetailsResponse[]> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (limit) params.append("limit", limit.toString());
 
     return makeApiCall(() =>

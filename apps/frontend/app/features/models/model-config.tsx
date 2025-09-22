@@ -33,6 +33,7 @@ import {
   useTestConnection,
   useUpdateConfiguration,
 } from "~/hooks/use-configurations";
+import { useCurrentUser } from "~/hooks/use-current-user";
 import {
   type FieldDefinition,
   type ProviderType,
@@ -53,6 +54,7 @@ export function ModelConfig({
   editingConfig,
   onSaved,
 }: ModelConfigProps) {
+  const { userId } = useCurrentUser();
   const providerDef = getProviderDefinition(provider);
   const [config, setConfig] = useState<Record<string, any>>(
     providerDef.defaultValues
@@ -68,8 +70,8 @@ export function ModelConfig({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   // TanStack Query hooks
-  const createConfiguration = useCreateConfiguration();
-  const updateConfiguration = useUpdateConfiguration();
+  const createConfiguration = useCreateConfiguration(userId || "");
+  const updateConfiguration = useUpdateConfiguration(userId || "");
   const testConnection = useTestConnection();
 
   // Load existing configuration when editing
@@ -173,6 +175,13 @@ export function ModelConfig({
 
   // Handle save
   const handleSave = async () => {
+    if (!userId) {
+      toast.error("Authentication required", {
+        description: "Please log in to save configurations.",
+      });
+      return;
+    }
+
     const validationError = validateForm();
     if (validationError) {
       toast.error(validationError);

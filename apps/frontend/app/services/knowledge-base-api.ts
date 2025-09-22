@@ -7,17 +7,16 @@ import type {
 } from "@athena/shared";
 import { apiClient, makeApiCall } from "~/lib/api-client";
 
-// Demo user ID (ULID format) - in a real app, this would come from auth
-export const DEMO_USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
 
 export const knowledgeBaseApi = {
   // Create a new knowledge base
   async createKnowledgeBase(
-    data: CreateKnowledgeBaseRequest
+    data: CreateKnowledgeBaseRequest,
+    userId: string
   ): Promise<KnowledgeBaseResponse> {
     return makeApiCall(() =>
       apiClient
-        .post(`knowledge-bases?userId=${DEMO_USER_ID}`, {
+        .post(`knowledge-bases?userId=${userId}`, {
           json: data,
         })
         .json<ApiResponse<KnowledgeBaseResponse>>()
@@ -25,14 +24,14 @@ export const knowledgeBaseApi = {
   },
 
   // Get all knowledge bases with pagination and hierarchy support
-  async getKnowledgeBases(options?: {
+  async getKnowledgeBases(userId: string, options?: {
     page?: number;
     limit?: number;
     parentId?: string | null;
     includeChildren?: boolean;
     hierarchy?: boolean;
   }): Promise<KnowledgeBaseListResponse | KnowledgeBaseResponse[]> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     
     if (options?.page) params.append("page", options.page.toString());
     if (options?.limit) params.append("limit", options.limit.toString());
@@ -60,9 +59,10 @@ export const knowledgeBaseApi = {
   // Get a specific knowledge base by ID
   async getKnowledgeBase(
     id: string,
+    userId: string,
     includeChildren = false
   ): Promise<KnowledgeBaseResponse> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (includeChildren) params.append("includeChildren", "true");
 
     return makeApiCall(() =>
@@ -75,11 +75,12 @@ export const knowledgeBaseApi = {
   // Update an existing knowledge base
   async updateKnowledgeBase(
     id: string,
-    data: UpdateKnowledgeBaseRequest
+    data: UpdateKnowledgeBaseRequest,
+    userId: string
   ): Promise<KnowledgeBaseResponse> {
     return makeApiCall(() =>
       apiClient
-        .put(`knowledge-bases/${id}?userId=${DEMO_USER_ID}`, {
+        .put(`knowledge-bases/${id}?userId=${userId}`, {
           json: data,
         })
         .json<ApiResponse<KnowledgeBaseResponse>>()
@@ -89,9 +90,10 @@ export const knowledgeBaseApi = {
   // Delete a knowledge base
   async deleteKnowledgeBase(
     id: string,
+    userId: string,
     deleteFiles = false
   ): Promise<{ success: boolean; message: string }> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (deleteFiles) params.append("deleteFiles", "true");
 
     return makeApiCall(() =>
@@ -102,14 +104,14 @@ export const knowledgeBaseApi = {
   },
 
   // Get knowledge base statistics
-  async getKnowledgeBaseStats(id: string): Promise<{
+  async getKnowledgeBaseStats(id: string, userId: string): Promise<{
     fileCount: number;
     totalSize: number;
     lastActivity: string;
   }> {
     return makeApiCall(() =>
       apiClient
-        .get(`knowledge-bases/${id}/stats?userId=${DEMO_USER_ID}`)
+        .get(`knowledge-bases/${id}/stats?userId=${userId}`)
         .json<ApiResponse<{
           fileCount: number;
           totalSize: number;

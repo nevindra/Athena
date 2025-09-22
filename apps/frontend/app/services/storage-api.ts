@@ -5,8 +5,6 @@ import type {
 } from "@athena/shared";
 import { apiClient, makeApiCall } from "~/lib/api-client";
 
-// Demo user ID (ULID format) - in a real app, this would come from auth
-export const DEMO_USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
 
 export interface CleanupResult {
   success: boolean;
@@ -32,34 +30,35 @@ export interface StorageOptimizationResult {
 
 export const storageApi = {
   // Get storage statistics for the user
-  async getStorageStats(): Promise<StorageStatsResponse> {
+  async getStorageStats(userId: string): Promise<StorageStatsResponse> {
     return makeApiCall(() =>
       apiClient
-        .get(`storage/stats?userId=${DEMO_USER_ID}`)
+        .get(`storage/stats?userId=${userId}`)
         .json<ApiResponse<StorageStatsResponse>>()
     );
   },
 
   // Clean up temporary files
-  async cleanupTempFiles(): Promise<CleanupResult> {
+  async cleanupTempFiles(userId: string): Promise<CleanupResult> {
     return makeApiCall(() =>
       apiClient
-        .post(`storage/cleanup/temp?userId=${DEMO_USER_ID}`)
+        .post(`storage/cleanup/temp?userId=${userId}`)
         .json<ApiResponse<CleanupResult>>()
     );
   },
 
   // Empty trash (permanently delete trashed files)
-  async emptyTrash(): Promise<CleanupResult> {
+  async emptyTrash(userId: string): Promise<CleanupResult> {
     return makeApiCall(() =>
       apiClient
-        .post(`storage/cleanup/trash?userId=${DEMO_USER_ID}`)
+        .post(`storage/cleanup/trash?userId=${userId}`)
         .json<ApiResponse<CleanupResult>>()
     );
   },
 
   // Get trashed files
   async getTrashFiles(
+    userId: string,
     page?: number,
     limit?: number
   ): Promise<{
@@ -71,7 +70,7 @@ export const storageApi = {
       totalPages: number;
     };
   }> {
-    const params = new URLSearchParams({ userId: DEMO_USER_ID });
+    const params = new URLSearchParams({ userId });
     if (page) params.append("page", page.toString());
     if (limit) params.append("limit", limit.toString());
 
@@ -91,13 +90,13 @@ export const storageApi = {
   },
 
   // Restore a file from trash
-  async restoreFromTrash(fileId: string): Promise<{
+  async restoreFromTrash(fileId: string, userId: string): Promise<{
     success: boolean;
     message: string;
   }> {
     return makeApiCall(() =>
       apiClient
-        .post(`storage/trash/${fileId}/restore?userId=${DEMO_USER_ID}`)
+        .post(`storage/trash/${fileId}/restore?userId=${userId}`)
         .json<ApiResponse<{
           success: boolean;
           message: string;
@@ -106,14 +105,14 @@ export const storageApi = {
   },
 
   // Find duplicate files
-  async getDuplicateFiles(): Promise<{
+  async getDuplicateFiles(userId: string): Promise<{
     duplicates: DuplicateGroup[];
     totalGroups: number;
     totalPotentialSavings: number;
   }> {
     return makeApiCall(() =>
       apiClient
-        .get(`storage/duplicates?userId=${DEMO_USER_ID}`)
+        .get(`storage/duplicates?userId=${userId}`)
         .json<ApiResponse<{
           duplicates: DuplicateGroup[];
           totalGroups: number;
@@ -123,10 +122,10 @@ export const storageApi = {
   },
 
   // Optimize storage (cleanup temp files, find duplicates, etc.)
-  async optimizeStorage(): Promise<StorageOptimizationResult> {
+  async optimizeStorage(userId: string): Promise<StorageOptimizationResult> {
     return makeApiCall(() =>
       apiClient
-        .post(`storage/optimize?userId=${DEMO_USER_ID}`)
+        .post(`storage/optimize?userId=${userId}`)
         .json<ApiResponse<StorageOptimizationResult>>()
     );
   },

@@ -33,8 +33,10 @@ export interface ChatRequestBody {
   }>;
 }
 
+const MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024; // 50MB per attachment
+const MAX_TOTAL_ATTACHMENTS_SIZE = 200 * 1024 * 1024; // 200MB total
+
 async function fetchMessageAttachments(sessionId: string) {
-  // Get all messages for this session that have attachments
   const messagesWithAttachments = await db
     .select()
     .from(chatMessages)
@@ -50,22 +52,34 @@ async function fetchMessageAttachments(sessionId: string) {
     }>;
   }> = [];
 
+  const storageProvider = StorageFactory.getStorageProvider();
+  let totalSize = 0;
+
   for (const message of messagesWithAttachments) {
     if (message.attachments && Array.isArray(message.attachments)) {
       const messageAttachments = [];
 
       for (const attachment of message.attachments) {
         try {
-          const storageProvider = StorageFactory.getStorageProvider();
-          
-          // Use the stored path from MinIO storage
           if (!attachment.path) {
             console.warn(`Attachment ${attachment.id} missing path - skipping`);
             continue;
           }
-          const filePath = attachment.path;
-          
-          const fileData = await storageProvider.download(filePath);
+
+          const fileData = await storageProvider.download(attachment.path);
+
+          // Check actual file size after download
+          if (fileData.length > MAX_ATTACHMENT_SIZE) {
+            console.warn(`Attachment ${attachment.id} too large (${fileData.length} bytes) - skipping`);
+            continue;
+          }
+
+          if (totalSize + fileData.length > MAX_TOTAL_ATTACHMENTS_SIZE) {
+            console.warn(`Total attachments size limit exceeded - skipping remaining attachments`);
+            break;
+          }
+
+          totalSize += fileData.length;
 
           messageAttachments.push({
             id: attachment.id,
@@ -85,12 +99,46 @@ async function fetchMessageAttachments(sessionId: string) {
         });
       }
     }
+
+    if (totalSize >= MAX_TOTAL_ATTACHMENTS_SIZE) {
+      break;
+    }
   }
 
   return attachmentFiles;
 }
 
-export async function handleChatRequest(body: ChatRequestBody) {
+function validateChatRequest(body: ChatRequestBody): void {
+  if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
+    throw new Error("Messages array is required and cannot be empty");
+  }
+
+  if (!body.userId) {
+    throw new Error("User ID is required");
+  }
+
+  // Validate file attachments size
+  if (body.files && Array.isArray(body.files)) {
+    let totalSize = 0;
+    for (const file of body.files) {
+      if (file.data) {
+        const size = Buffer.byteLength(file.data, 'base64');
+        if (size > MAX_ATTACHMENT_SIZE) {
+          throw new Error(`File ${file.name} is too large (max ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB)`);
+        }
+        totalSize += size;
+      }
+    }
+
+    if (totalSize > MAX_TOTAL_ATTACHMENTS_SIZE) {
+      throw new Error(`Total file size too large (max ${MAX_TOTAL_ATTACHMENTS_SIZE / 1024 / 1024}MB)`);
+    }
+  }
+}
+
+async function prepareChatRequest(body: ChatRequestBody): Promise<ChatRequest> {
+  validateChatRequest(body);
+
   const {
     messages,
     userId,
@@ -101,15 +149,6 @@ export async function handleChatRequest(body: ChatRequestBody) {
     files,
   } = body;
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    throw new Error("Messages array is required and cannot be empty");
-  }
-
-  if (!userId) {
-    throw new Error("User ID is required");
-  }
-
-  // Fetch attachments from database if sessionId is provided
   let attachmentFiles: Array<{
     messageId: string;
     attachments: Array<{
@@ -124,7 +163,7 @@ export async function handleChatRequest(body: ChatRequestBody) {
     attachmentFiles = await fetchMessageAttachments(sessionId);
   }
 
-  const request: ChatRequest = {
+  return {
     messages,
     userId,
     configurationId,
@@ -134,19 +173,20 @@ export async function handleChatRequest(body: ChatRequestBody) {
     files,
     attachmentFiles,
   };
+}
 
+export async function handleChatRequest(body: ChatRequestBody) {
+  const request = await prepareChatRequest(body);
   const response = await generateChatResponse(request);
 
-  // Save the AI response to session if sessionId provided
-  if (sessionId && response.message) {
+  if (request.sessionId && response.message) {
     try {
-      await handleAddMessage(sessionId, {
+      await handleAddMessage(request.sessionId, {
         role: "assistant",
         content: response.message,
       });
     } catch (error) {
       console.warn("Failed to save AI message to session:", error);
-      // Don't fail the request if saving fails
     }
   }
 
@@ -154,56 +194,8 @@ export async function handleChatRequest(body: ChatRequestBody) {
 }
 
 export async function handleStreamChatRequest(body: ChatRequestBody) {
-  const {
-    messages,
-    userId,
-    configurationId,
-    apiRegistrationId,
-    sessionId,
-    systemPromptId,
-    files,
-  } = body;
-
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    throw new Error("Messages array is required and cannot be empty");
-  }
-
-  if (!userId) {
-    throw new Error("User ID is required");
-  }
-
-  // Fetch attachments from database if sessionId is provided
-  let attachmentFiles: Array<{
-    messageId: string;
-    attachments: Array<{
-      id: string;
-      filename: string;
-      mimeType: string;
-      data: Buffer;
-    }>;
-  }> = [];
-
-  if (sessionId) {
-    attachmentFiles = await fetchMessageAttachments(sessionId);
-  }
-
-  const request: ChatRequest = {
-    messages,
-    userId,
-    configurationId,
-    apiRegistrationId,
-    sessionId,
-    systemPromptId,
-    files,
-    attachmentFiles,
-  };
-
-  const stream = await streamChatResponse(request);
-
-  // Note: For streaming, we'll need to handle message saving in the frontend
-  // since we can't easily extract the final message from the stream here
-
-  return stream;
+  const request = await prepareChatRequest(body);
+  return await streamChatResponse(request);
 }
 
 export async function handleGetModelsRequest(

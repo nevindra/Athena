@@ -8,7 +8,7 @@ import type { ChatMessage, AttachmentFile, StatelessFile } from "../../utils/mes
 export interface GeminiResponse {
   text: string;
   finishReason?: string;
-  reasoning?: any;
+  reasoning?: string;
   usage?: any;
 }
 
@@ -103,7 +103,12 @@ Schema fields: ${systemPrompt.jsonSchema.map((field) => `${field.name} (${field.
     }
 
     const text = formatJsonOutput(object);
-    return { text, reasoning, finishReason, usage };
+    return {
+      text,
+      reasoning: reasoning ? JSON.stringify(reasoning) : undefined,
+      finishReason,
+      usage
+    };
   }
 
   private async generateTextResponse(
@@ -126,7 +131,12 @@ Schema fields: ${systemPrompt.jsonSchema.map((field) => `${field.name} (${field.
       },
     });
 
-    return { text, reasoning, finishReason, usage };
+    return {
+      text,
+      reasoning: reasoning ? JSON.stringify(reasoning) : undefined,
+      finishReason,
+      usage
+    };
   }
 
   async streamResponse(

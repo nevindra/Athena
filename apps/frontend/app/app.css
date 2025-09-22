@@ -157,6 +157,31 @@
     --tracking-widest: calc(var(--tracking-normal) + 0.1em);
 }
 
+* {
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
 body {
     letter-spacing: var(--tracking-normal);
+    color: var(--foreground);
+    background-color: var(--background);
+}
+
+* {
+    color: inherit;
+}
+
+/* More subtle borders throughout the app */
+[data-slot="input"],
+[data-slot="select-trigger"],
+[data-slot="select-content"],
+.border {
+    border-color: var(--border) !important;
+    border-opacity: 0.3 !important;
+}
+
+/* Subtle borders on focus */
+[data-slot="input"]:focus-visible,
+[data-slot="select-trigger"]:focus-visible {
+    border-opacity: 0.6 !important;
 }

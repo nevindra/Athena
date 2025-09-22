@@ -6,35 +6,34 @@ import type {
 } from "@athena/shared";
 import { apiClient, makeApiCall } from "~/lib/api-client";
 
-// Demo user ID (ULID format) - same as configurations
-export const DEMO_USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
 
 export const systemPromptsApi = {
-  // Get all system prompts for the demo user
-  async getSystemPrompts(): Promise<SystemPrompt[]> {
+  // Get all system prompts for a user
+  async getSystemPrompts(userId: string): Promise<SystemPrompt[]> {
     return makeApiCall(() =>
       apiClient
-        .get(`system-prompts?userId=${DEMO_USER_ID}`)
+        .get(`system-prompts?userId=${userId}`)
         .json<ApiResponse<SystemPrompt[]>>()
     );
   },
 
   // Get a specific system prompt by ID
-  async getSystemPrompt(promptId: string): Promise<SystemPrompt> {
+  async getSystemPrompt(promptId: string, userId: string): Promise<SystemPrompt> {
     return makeApiCall(() =>
       apiClient
-        .get(`system-prompts/${promptId}?userId=${DEMO_USER_ID}`)
+        .get(`system-prompts/${promptId}?userId=${userId}`)
         .json<ApiResponse<SystemPrompt>>()
     );
   },
 
   // Create a new system prompt
   async createSystemPrompt(
-    data: CreateSystemPromptRequest
+    data: CreateSystemPromptRequest,
+    userId: string
   ): Promise<SystemPrompt> {
     return makeApiCall(() =>
       apiClient
-        .post(`system-prompts?userId=${DEMO_USER_ID}`, {
+        .post(`system-prompts?userId=${userId}`, {
           json: data,
         })
         .json<ApiResponse<SystemPrompt>>()
@@ -44,11 +43,12 @@ export const systemPromptsApi = {
   // Update an existing system prompt
   async updateSystemPrompt(
     promptId: string,
-    data: UpdateSystemPromptRequest
+    data: UpdateSystemPromptRequest,
+    userId: string
   ): Promise<SystemPrompt> {
     return makeApiCall(() =>
       apiClient
-        .put(`system-prompts/${promptId}?userId=${DEMO_USER_ID}`, {
+        .put(`system-prompts/${promptId}?userId=${userId}`, {
           json: data,
         })
         .json<ApiResponse<SystemPrompt>>()
@@ -56,10 +56,10 @@ export const systemPromptsApi = {
   },
 
   // Delete a system prompt
-  async deleteSystemPrompt(promptId: string): Promise<void> {
+  async deleteSystemPrompt(promptId: string, userId: string): Promise<void> {
     await makeApiCall(() =>
       apiClient
-        .delete(`system-prompts/${promptId}?userId=${DEMO_USER_ID}`)
+        .delete(`system-prompts/${promptId}?userId=${userId}`)
         .json<ApiResponse<null>>()
     );
   },

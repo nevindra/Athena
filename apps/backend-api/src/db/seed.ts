@@ -1,69 +1,58 @@
 import { db } from "./index";
 import { users } from "./schema";
 import { eq } from "drizzle-orm";
+import { auth } from "../auth";
 
-// Demo user ID used across all frontend API calls
-const DEMO_USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
-
-export async function seedUsers() {
-  console.log("🌱 Seeding users table...");
+export async function seedSuperAdmin() {
+  console.log("🌱 Seeding superadmin user...");
 
   try {
-    // Check if demo user already exists
-    const existingUser = await db
+    // Check if superadmin already exists
+    const existingSuperAdmin = await db
       .select()
       .from(users)
-      .where(eq(users.id, DEMO_USER_ID))
+      .where(eq(users.username, "superadmin"))
       .limit(1);
 
-    if (existingUser.length > 0) {
-      console.log("✅ Demo user already exists");
+    if (existingSuperAdmin.length > 0) {
+      console.log("✅ Superadmin user already exists");
       return;
     }
 
-    // Insert demo users
-    const demoUsers = [
-      {
-        id: DEMO_USER_ID,
-        email: "demo@athena.ai",
-        name: "Demo User",
+    // Create superadmin user using Better Auth
+    console.log("🔨 Creating superadmin user...");
+    const result = await auth.api.signUpEmail({
+      body: {
+        email: "superadmin@athena.ai",
+        name: "Super Administrator",
+        password: "adminadmin",
+        username: "superadmin",
+        displayUsername: "Super Admin",
       },
-      {
-        email: "alice@athena.ai", 
-        name: "Alice Johnson",
-      },
-      {
-        email: "bob@athena.ai",
-        name: "Bob Smith",
-      },
-      {
-        email: "carol@athena.ai",
-        name: "Carol Davis",
-      },
-    ];
+    });
 
-    const insertedUsers = await db
-      .insert(users)
-      .values(demoUsers)
-      .returning();
-
-    console.log(`✅ Inserted ${insertedUsers.length} users:`);
-    for (const user of insertedUsers) {
-      console.log(`   - ${user.name} (${user.email}) - ID: ${user.id}`);
+    if (result) {
+      console.log("✅ Superadmin user created successfully!");
+      console.log("   - Username: superadmin");
+      console.log("   - Password: adminadmin");
+      console.log("   - Email: superadmin@athena.ai");
+      console.log("   - Display Name: Super Admin");
+    } else {
+      throw new Error("Failed to create superadmin user");
     }
 
-    console.log("🎉 User seeding completed successfully!");
   } catch (error) {
-    console.error("❌ Error seeding users:", error);
+    console.error("❌ Error seeding superadmin:", error);
     throw error;
   }
 }
 
+
 export async function seedDatabase() {
   console.log("🚀 Starting database seeding...");
-  
+
   try {
-    await seedUsers();
+    await seedSuperAdmin();
     console.log("✅ Database seeding completed!");
   } catch (error) {
     console.error("❌ Database seeding failed:", error);

@@ -32,7 +32,7 @@ import {
   useUpdateSession,
   useUserSessions,
 } from "~/hooks/use-sessions";
-import { DEMO_USER_ID } from "~/services/sessions-api";
+import { useAuthenticatedUserId } from "~/hooks/use-current-user";
 
 interface ChatSession {
   id: string;
@@ -65,9 +65,10 @@ export function ChatHistorySidebar({
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
 
-  const { data: sessions, isLoading, error } = useUserSessions(DEMO_USER_ID);
-  const deleteSessionMutation = useDeleteSession(DEMO_USER_ID);
-  const updateSessionMutation = useUpdateSession(DEMO_USER_ID);
+  const userId = useAuthenticatedUserId();
+  const { data: sessions, isLoading, error } = useUserSessions(userId);
+  const deleteSessionMutation = useDeleteSession(userId);
+  const updateSessionMutation = useUpdateSession(userId);
 
   // Transform sessions data to include message count and last message
   const transformedSessions: ChatSession[] =
@@ -206,16 +207,16 @@ export function ChatHistorySidebar({
             damping: 30,
             mass: 0.8
           }}
-          className="hidden md:flex w-80 lg:w-80 md:w-72 bg-white/95 backdrop-blur-sm flex-col h-[60vh] shadow-2xl shadow-black/10 rounded-2xl m-4 mr-6 relative"
+          className="hidden md:flex w-80 lg:w-80 md:w-72 bg-background/95 backdrop-blur-sm flex-col h-[60vh] shadow-2xl shadow-black/10 dark:shadow-white/5 rounded-2xl m-4 mr-6 relative border border-border/20"
         >
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="p-6 space-y-6">
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   Chat History
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Your conversations with AI assistants
                 </p>
               </div>
@@ -228,11 +229,11 @@ export function ChatHistorySidebar({
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white shadow-sm shadow-gray-200/50 border border-gray-200/40 rounded-lg focus:shadow-md focus:shadow-blue-500/20 focus:border-blue-300/60 transition-all duration-200 focus:-translate-y-0.5"
+                    className="pl-10 bg-background shadow-sm shadow-border/50 border border-border/40 rounded-lg focus:shadow-md focus:shadow-primary/20 focus:border-primary/60 transition-all duration-200 focus:-translate-y-0.5"
                   />
                 </div>
                 <Select value={filterBy} onValueChange={(value: "all" | "favorites" | "recent") => setFilterBy(value)}>
-                  <SelectTrigger className="w-28 bg-white shadow-sm shadow-gray-200/50 border border-gray-200/40 rounded-lg focus:shadow-md focus:shadow-blue-500/20 focus:border-blue-300/60 transition-all duration-200">
+                  <SelectTrigger className="w-28 bg-background shadow-sm shadow-border/50 border border-border/40 rounded-lg focus:shadow-md focus:shadow-primary/20 focus:border-primary/60 transition-all duration-200">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -249,7 +250,7 @@ export function ChatHistorySidebar({
               <div className="px-6 pb-6 space-y-4">
                 {/* Sort Options */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-foreground">
                     Recent Chats
                   </span>
                   <DropdownMenu>
@@ -257,7 +258,7 @@ export function ChatHistorySidebar({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 rounded-md"
+                        className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md"
                       >
                         Sort
                       </Button>
@@ -279,39 +280,39 @@ export function ChatHistorySidebar({
                 {/* Loading State */}
                 {isLoading && (
                   <div className="text-center py-12">
-                    <div className="w-12 h-12 bg-white shadow-lg shadow-gray-200/50 border border-gray-200/40 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <Clock className="h-5 w-5 text-blue-600 animate-spin" />
+                    <div className="w-12 h-12 bg-background shadow-lg shadow-border/50 border border-border/40 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <Clock className="h-5 w-5 text-primary animate-spin" />
                     </div>
-                    <p className="text-sm text-gray-600">Loading conversations...</p>
+                    <p className="text-sm text-muted-foreground">Loading conversations...</p>
                   </div>
                 )}
 
                 {/* Error State */}
                 {error && (
                   <div className="text-center py-12">
-                    <div className="w-12 h-12 bg-white shadow-lg shadow-red-200/50 border border-red-200/40 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <MessageSquare className="h-5 w-5 text-red-500" />
+                    <div className="w-12 h-12 bg-background shadow-lg shadow-destructive/20 border border-destructive/40 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="h-5 w-5 text-destructive" />
                     </div>
-                    <p className="text-sm text-gray-800 mb-2">
+                    <p className="text-sm text-foreground mb-2">
                       Failed to load conversations
                     </p>
-                    <p className="text-xs text-gray-500">Please try again later</p>
+                    <p className="text-xs text-muted-foreground">Please try again later</p>
                   </div>
                 )}
 
                 {/* Empty State */}
                 {!isLoading && !error && filteredSessions.length === 0 && (
                   <div className="text-center py-12">
-                    <div className="w-12 h-12 bg-white shadow-lg shadow-gray-200/50 border border-gray-200/40 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <MessageSquare className="h-5 w-5 text-gray-400" />
+                    <div className="w-12 h-12 bg-background shadow-lg shadow-border/50 border border-border/40 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <p className="text-sm text-gray-800 mb-2">
+                    <p className="text-sm text-foreground mb-2">
                       No conversations found
                     </p>
                     {searchQuery ? (
-                      <p className="text-xs text-gray-500">Try different search terms</p>
+                      <p className="text-xs text-muted-foreground">Try different search terms</p>
                     ) : (
-                      <p className="text-xs text-gray-500">Start a new chat to see it here</p>
+                      <p className="text-xs text-muted-foreground">Start a new chat to see it here</p>
                     )}
                   </div>
                 )}
@@ -338,8 +339,8 @@ export function ChatHistorySidebar({
                       <Card
                         key={session.id}
                         className={`px-3 py-2 cursor-pointer transition-all duration-200 group hover:shadow-lg hover:-translate-y-1 rounded-md ${currentSessionId === session.id
-                          ? "bg-white shadow-md shadow-blue-500/20 border border-blue-200/60"
-                          : "bg-white/90 shadow-sm shadow-gray-200/50 border border-gray-200/40 hover:shadow-md hover:shadow-gray-300/60"
+                          ? "bg-background shadow-md shadow-primary/20 border border-primary/60"
+                          : "bg-background/90 shadow-sm shadow-border/50 border border-border/40 hover:shadow-md hover:shadow-border/60"
                           }`}
                         onClick={() => onSelectSession(session)}
                       >
@@ -361,10 +362,10 @@ export function ChatHistorySidebar({
                         ) : (
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0 flex items-center justify-between">
-                              <h4 className="text-sm font-medium leading-tight group-hover:text-blue-600 truncate flex-1 mr-2">
+                              <h4 className="text-sm font-medium leading-tight group-hover:text-primary truncate flex-1 mr-2 text-foreground">
                                 {session.title || "Untitled Chat"}
                               </h4>
-                              <span className="text-xs text-gray-500 flex-shrink-0">
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
                                 {formatDate(session.updatedAt)}
                               </span>
                             </div>
@@ -425,9 +426,9 @@ export function ChatHistorySidebar({
             </ScrollArea>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200/30">
+            <div className="px-6 py-4 border-t border-border/30">
               <div className="text-center">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   {filteredSessions.length} of {transformedSessions.length}{" "}
                   conversations
                 </p>

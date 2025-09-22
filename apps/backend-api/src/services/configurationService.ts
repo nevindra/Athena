@@ -90,7 +90,11 @@ export async function getAIConfig(
   }
 
   if (!config.length) {
-    throw new Error("No active AI configuration found for user");
+    if (configurationId) {
+      throw new Error(`AI configuration with ID '${configurationId}' not found or inactive for user`);
+    } else {
+      throw new Error("No active AI configuration found for user. Please create and activate an AI configuration in the Models Hub.");
+    }
   }
 
   const provider = config[0].provider as AIProvider;

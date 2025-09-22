@@ -41,7 +41,7 @@ export default function Home() {
       />
       <div className="flex h-full">
         <WelcomeScreen isSidebarOpen={isHistoryOpen} />
-        <ChatHistorySidebar 
+        <ChatHistorySidebar
           isOpen={isHistoryOpen}
           onClose={() => setIsHistoryOpen(false)}
           onSelectSession={handleSelectSession}

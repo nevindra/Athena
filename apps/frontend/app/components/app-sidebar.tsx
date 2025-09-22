@@ -45,16 +45,16 @@ const data = {
       url: "/knowledge-base",
       icon: BookOpen,
     },
-    {
-      title: "Image Generator",
-      url: "/image-generator",
-      icon: Image,
-    },
-    {
-      title: "OCR Reader",
-      url: "/ocr-reader",
-      icon: ScanText,
-    },
+    // {
+    //   title: "Image Generator",
+    //   url: "/image-generator",
+    //   icon: Image,
+    // },
+    // {
+    //   title: "OCR Reader",
+    //   url: "/ocr-reader",
+    //   icon: ScanText,
+    // },
     {
       title: "API Management",
       url: "#",
@@ -70,25 +70,25 @@ const data = {
         },
       ],
     },
-    {
-      title: "Automation",
-      url: "#",
-      icon: Workflow,
-      items: [
-        {
-          title: "Workflow Builder",
-          url: "/automation/workflows",
-        },
-        {
-          title: "Templates",
-          url: "/automation/templates",
-        },
-        {
-          title: "History",
-          url: "/automation/history",
-        },
-      ],
-    },
+    // {
+    //   title: "Automation",
+    //   url: "#",
+    //   icon: Workflow,
+    //   items: [
+    //     {
+    //       title: "Workflow Builder",
+    //       url: "/automation/workflows",
+    //     },
+    //     {
+    //       title: "Templates",
+    //       url: "/automation/templates",
+    //     },
+    //     {
+    //       title: "History",
+    //       url: "/automation/history",
+    //     },
+    //   ],
+    // },
   ],
 };
 
@@ -100,10 +100,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
             A
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-card-foreground whitespace-nowrap">
-              AthenaAI
-            </span>
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-card-foreground whitespace-nowrap">
+                AthenaAI
+              </span>
+              <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full text-xs font-medium border border-amber-200 dark:border-amber-800">
+                ALPHA
+              </div>
+            </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               by Nodeflux
             </span>
@@ -131,7 +136,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center justify-between px-3 py-2">
-          <NavUser user={data.user} />
+          <NavUser />
           <div className="group-data-[collapsible=icon]:hidden">
             <ThemeToggle />
           </div>

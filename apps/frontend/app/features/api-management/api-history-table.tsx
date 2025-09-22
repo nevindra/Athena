@@ -47,6 +47,7 @@ import {
   useRecentApiCalls,
 } from "~/hooks/use-api-metrics";
 import { useApiRegistrations } from "~/hooks/use-api-registrations";
+import { useCurrentUser } from "~/hooks/use-current-user";
 
 interface ApiCall {
   id: string;
@@ -65,8 +66,7 @@ interface ApiCall {
 }
 
 export function ApiHistoryTable() {
-  // TODO: Get actual user ID from auth context
-  const userId = "01HZXM0K1QRST9VWXYZ01234AB"; // Using existing user ID
+  const { userId } = useCurrentUser();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -81,7 +81,7 @@ export function ApiHistoryTable() {
     data: registrations,
     isLoading: registrationsLoading,
     error: registrationsError,
-  } = useApiRegistrations(userId);
+  } = useApiRegistrations(userId || "");
 
   // Get all registration IDs for "all" filter
   const allRegistrationIds = registrations?.map((r) => r.id) || [];

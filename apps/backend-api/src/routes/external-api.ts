@@ -8,34 +8,32 @@ import { metricsService } from "../services/metricsService";
 import type { ChatMessage } from "../utils/messageUtils";
 
 export const externalApiRoutes = new Elysia({ prefix: "/external" })
-  // Metrics tracking middleware
+  // External API specific metrics middleware
   .derive(({ params, request }) => {
     const startTime = Date.now();
     const method = request.method;
     const url = new URL(request.url);
-    const endpoint = url.pathname.split('/').slice(-1)[0]; // Get last part of path
     const registrationId = (params as any)?.registrationId;
 
     return {
-      metricsData: {
+      externalMetrics: {
         startTime,
         method,
-        endpoint: `/${endpoint}`,
         registrationId: registrationId || "unknown",
       }
     };
   })
-  .onAfterHandle(async ({ metricsData, response, headers }) => {
-    if (metricsData?.registrationId && metricsData.registrationId !== "unknown") {
-      const statusCode = 200; // Success
-      const responseTimeMs = Date.now() - metricsData.startTime;
+  .onAfterHandle(async ({ externalMetrics, response, headers, path }) => {
+    if (externalMetrics?.registrationId && externalMetrics.registrationId !== "unknown") {
+      const statusCode = 200;
+      const responseTimeMs = Date.now() - externalMetrics.startTime;
       const userAgent = headers["user-agent"];
       const ipAddress = headers["x-forwarded-for"] || headers["x-real-ip"] || "unknown";
 
       await metricsService.recordApiCall({
-        registrationId: metricsData.registrationId,
-        method: metricsData.method,
-        endpoint: metricsData.endpoint,
+        registrationId: externalMetrics.registrationId,
+        method: externalMetrics.method,
+        endpoint: path,
         statusCode,
         responseTimeMs,
         userAgent,
@@ -43,17 +41,17 @@ export const externalApiRoutes = new Elysia({ prefix: "/external" })
       });
     }
   })
-  .onError(async ({ metricsData, error, headers }) => {
-    if (metricsData?.registrationId && metricsData.registrationId !== "unknown") {
+  .onError(async ({ externalMetrics, error, headers, path }) => {
+    if (externalMetrics?.registrationId && externalMetrics.registrationId !== "unknown") {
       const statusCode = error.name === "ValidationError" ? 400 : 500;
-      const responseTimeMs = Date.now() - metricsData.startTime;
+      const responseTimeMs = Date.now() - externalMetrics.startTime;
       const userAgent = headers["user-agent"];
       const ipAddress = headers["x-forwarded-for"] || headers["x-real-ip"] || "unknown";
 
       await metricsService.recordApiCall({
-        registrationId: metricsData.registrationId,
-        method: metricsData.method,
-        endpoint: metricsData.endpoint,
+        registrationId: externalMetrics.registrationId,
+        method: externalMetrics.method,
+        endpoint: path,
         statusCode,
         responseTimeMs,
         errorMessage: error.message,
@@ -65,50 +63,22 @@ export const externalApiRoutes = new Elysia({ prefix: "/external" })
   // External API endpoint for registered APIs
   .post(
     "/:registrationId/chat",
-    async ({ params, body, headers, request }) => {
-      const startTime = Date.now();
+    async ({ params, body, headers }) => {
       const { registrationId } = params;
       const { messages, stream = false, files } = body;
-      const method = "POST";
-      const endpoint = `/external/${registrationId}/chat`;
-      let statusCode = 200;
-      let errorMessage: string | undefined;
-
-      // Extract request metadata for metrics
-      const userAgent = headers["user-agent"];
-      const ipAddress = headers["x-forwarded-for"] || headers["x-real-ip"] || "unknown";
-      const requestSize = JSON.stringify(body).length;
 
       try {
 
         // Extract API key from Authorization header
         const authHeader = headers["authorization"];
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-          statusCode = 401;
-          errorMessage = "Missing or invalid Authorization header";
-          const response = {
+          return {
             error: {
               message: "Missing or invalid Authorization header. Expected: Bearer {apiKey}",
               type: "authentication_error",
               code: "invalid_api_key",
             },
           };
-
-          // Record metrics for auth failure
-          await metricsService.recordApiCall({
-            registrationId,
-            method,
-            endpoint,
-            statusCode,
-            responseTimeMs: Date.now() - startTime,
-            requestSizeBytes: requestSize,
-            responseSizeBytes: JSON.stringify(response).length,
-            errorMessage,
-            userAgent,
-            ipAddress,
-          });
-
-          return response;
         }
 
         const apiKey = authHeader.replace("Bearer ", "");
@@ -127,60 +97,24 @@ export const externalApiRoutes = new Elysia({ prefix: "/external" })
         });
 
         if (!registration) {
-          statusCode = 401;
-          errorMessage = "Invalid API key or registration not found";
-          const response = {
+          return {
             error: {
               message: "Invalid API key or registration not found",
               type: "authentication_error",
               code: "invalid_api_key",
             },
           };
-
-          // Record metrics for invalid registration
-          await metricsService.recordApiCall({
-            registrationId,
-            method,
-            endpoint,
-            statusCode,
-            responseTimeMs: Date.now() - startTime,
-            requestSizeBytes: requestSize,
-            responseSizeBytes: JSON.stringify(response).length,
-            errorMessage,
-            userAgent,
-            ipAddress,
-          });
-
-          return response;
         }
 
         // Validate messages format
         if (!Array.isArray(messages) || messages.length === 0) {
-          statusCode = 400;
-          errorMessage = "Messages must be a non-empty array";
-          const response = {
+          return {
             error: {
               message: "Messages must be a non-empty array",
               type: "invalid_request_error",
               code: "invalid_messages",
             },
           };
-
-          // Record metrics for validation error
-          await metricsService.recordApiCall({
-            registrationId,
-            method,
-            endpoint,
-            statusCode,
-            responseTimeMs: Date.now() - startTime,
-            requestSizeBytes: requestSize,
-            responseSizeBytes: JSON.stringify(response).length,
-            errorMessage,
-            userAgent,
-            ipAddress,
-          });
-
-          return response;
         }
 
         // Prepare messages for AI service
@@ -228,48 +162,17 @@ export const externalApiRoutes = new Elysia({ prefix: "/external" })
           },
         };
 
-        // Record metrics for successful response
-        await metricsService.recordApiCall({
-          registrationId,
-          method,
-          endpoint,
-          statusCode: 200,
-          responseTimeMs: Date.now() - startTime,
-          requestSizeBytes: requestSize,
-          responseSizeBytes: JSON.stringify(successResponse).length,
-          userAgent,
-          ipAddress,
-        });
-
         return successResponse;
       } catch (error) {
         console.error("External API error:", error);
-        statusCode = 500;
-        errorMessage = error instanceof Error ? error.message : "Internal server error";
 
-        const errorResponse = {
+        return {
           error: {
             message: "Internal server error",
             type: "server_error",
             code: "internal_error",
           },
         };
-
-        // Record metrics for server error
-        await metricsService.recordApiCall({
-          registrationId,
-          method,
-          endpoint,
-          statusCode,
-          responseTimeMs: Date.now() - startTime,
-          requestSizeBytes: requestSize,
-          responseSizeBytes: JSON.stringify(errorResponse).length,
-          errorMessage,
-          userAgent,
-          ipAddress,
-        });
-
-        return errorResponse;
       }
     },
     {

@@ -1,10 +1,11 @@
 import type { AIConfiguration } from "@athena/shared";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { motion } from "framer-motion";
 import { Card } from "~/components/ui/card";
 import { EnhancedChatInput } from "~/features/chat-input/enhanced-chat-input";
 import { useCreateSession } from "~/hooks/use-sessions";
+import { useCurrentUser } from "~/hooks/use-current-user";
 
 const TASK_SUGGESTIONS = [
   {
@@ -29,6 +30,7 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
+  const { userId } = useCurrentUser();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<AIConfiguration | null>(
@@ -48,7 +50,7 @@ export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
     try {
       // Create a new chat session with the initial message
       const session = await createSession.mutateAsync({
-        userId: "01HZXM0K1QRST9VWXYZ01234AB",
+        userId: userId || "",
         configurationId: selectedConfig.id,
         initialMessage: message.trim(),
       });
@@ -85,13 +87,13 @@ export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="flex-1 flex flex-col min-h-0"
-      animate={{ 
+      animate={{
         marginLeft: isSidebarOpen ? 0 : 0,
         width: isSidebarOpen ? "auto" : "100%"
       }}
-      transition={{ 
+      transition={{
         type: "spring",
         stiffness: 300,
         damping: 30,
@@ -99,25 +101,25 @@ export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
       }}
     >
       {/* Main content area */}
-      <motion.div 
+      <motion.div
         className="flex-1 flex flex-col items-center justify-center px-4 py-12"
-        animate={{ 
+        animate={{
           scale: isSidebarOpen ? 0.95 : 1,
           opacity: isSidebarOpen ? 0.8 : 1
         }}
-        transition={{ 
+        transition={{
           type: "spring",
           stiffness: 400,
           damping: 25,
           mass: 0.6
         }}
       >
-        <motion.div 
+        <motion.div
           className="max-w-2xl w-full space-y-8"
-          animate={{ 
+          animate={{
             x: isSidebarOpen ? 20 : 0
           }}
-          transition={{ 
+          transition={{
             type: "spring",
             stiffness: 300,
             damping: 30
@@ -134,7 +136,8 @@ export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
           </div>
 
           {/* Assistant card */}
-          <div className="mx-auto max-w-md">
+          {/*TODO: ADD ASSISTANT FEATURE*/}
+          {/*<div className="mx-auto max-w-md">
             <Card className="p-4 bg-slate-900 border-slate-700 text-white">
               <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -153,14 +156,10 @@ export function WelcomeScreen({ isSidebarOpen = false }: WelcomeScreenProps) {
                 </div>
               </div>
             </Card>
-          </div>
+          </div>*/}
 
           {/* Task suggestions */}
           <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-muted-foreground">Tasks</span>
-              <button className="text-sm text-blue-600 hover:text-blue-700">View All</button>
-            </div>
             <div className="grid grid-cols-3 gap-3">
               {TASK_SUGGESTIONS.map((task, index) => (
                 <Card

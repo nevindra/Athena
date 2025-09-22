@@ -30,6 +30,7 @@ import {
   useDeleteConfiguration,
   useUpdateConfiguration,
 } from "~/hooks/use-configurations";
+import { useCurrentUser } from "~/hooks/use-current-user";
 
 interface ConfigurationListProps {
   onEditConfiguration?: (config: AIConfiguration) => void;
@@ -48,17 +49,18 @@ const providerNames = {
 };
 
 const providerColors = {
-  gemini: "border-blue-200 bg-blue-50/50",
-  ollama: "border-green-200 bg-green-50/50",
-  "http-api": "border-purple-200 bg-purple-50/50",
+  gemini: "border-border",
+  ollama: "border-border",
+  "http-api": "border-border",
 };
 
 export function ConfigurationList({
   onEditConfiguration,
 }: ConfigurationListProps) {
-  const { data: configurations, isLoading, error } = useConfigurations();
-  const deleteConfiguration = useDeleteConfiguration();
-  const updateConfiguration = useUpdateConfiguration();
+  const { userId } = useCurrentUser();
+  const { data: configurations, isLoading, error } = useConfigurations(userId || "");
+  const deleteConfiguration = useDeleteConfiguration(userId || "");
+  const updateConfiguration = useUpdateConfiguration(userId || "");
   const [configToDelete, setConfigToDelete] = useState<AIConfiguration | null>(
     null
   );
@@ -152,93 +154,138 @@ export function ConfigurationList({
         </Button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className={`gap-4 ${
+        configurations.length <= 2
+          ? "flex flex-col space-y-4"
+          : "grid md:grid-cols-2 lg:grid-cols-3"
+      }`}>
         {configurations.map((config) => {
           const Icon = providerIcons[config.provider];
           const colorClass = providerColors[config.provider];
+          const isListLayout = configurations.length <= 2;
 
           return (
             <Card
               key={config.id}
-              className={`transition-all duration-200 ${colorClass} ${!config.isActive ? "opacity-60" : ""}`}
+              className={`transition-all duration-200 ${colorClass} ${!config.isActive ? "opacity-60" : ""} ${
+                isListLayout ? "max-w-2xl" : ""
+              }`}
             >
-              <CardHeader className="pb-2">
-                <div className="space-y-2">
+              <CardHeader className={isListLayout ? "pb-4" : "pb-2"}>
+                <div className={`space-y-${isListLayout ? "3" : "2"}`}>
                   <div className="flex items-center justify-between">
-                    <div className="p-1.5 rounded-md bg-background/80">
-                      <Icon className="h-4 w-4" />
+                    <div className={`p-${isListLayout ? "2" : "1.5"} rounded-md bg-background/80`}>
+                      <Icon className={`h-${isListLayout ? "5" : "4"} w-${isListLayout ? "5" : "4"}`} />
                     </div>
                     <Badge
                       variant={config.isActive ? "default" : "secondary"}
-                      className="text-xs px-1.5 py-0.5"
+                      className={`text-${isListLayout ? "sm" : "xs"} px-${isListLayout ? "2" : "1.5"} py-${isListLayout ? "1" : "0.5"}`}
                     >
                       {config.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-medium truncate leading-tight">
+                    <CardTitle className={`${isListLayout ? "text-lg" : "text-sm"} font-medium truncate leading-tight`}>
                       {config.name}
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className={`${isListLayout ? "text-sm" : "text-xs"} text-muted-foreground truncate`}>
                       {providerNames[config.provider]}
                     </p>
+                    {isListLayout && config.config && (
+                      <div className="mt-2 space-y-1">
+                        {config.config.model && (
+                          <p className="text-xs text-muted-foreground">
+                            Model: <span className="font-medium">{config.config.model}</span>
+                          </p>
+                        )}
+                        {config.config.baseUrl && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            Endpoint: <span className="font-medium">{config.config.baseUrl}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="pt-0 pb-3">
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">
-                    <div className="flex justify-between items-center">
-                      <span>Created</span>
-                      <span>
-                        {new Date(config.createdAt).toLocaleDateString(
-                          "en-US",
-                          { month: "short", day: "numeric" }
-                        )}
-                      </span>
+              <CardContent className={`pt-0 ${isListLayout ? "pb-4" : "pb-3"}`}>
+                <div className="space-y-3">
+                  <div className={`${isListLayout ? "grid grid-cols-2 gap-4" : ""}`}>
+                    <div className={`text-${isListLayout ? "sm" : "xs"} text-muted-foreground`}>
+                      <div className="flex justify-between items-center">
+                        <span>Created</span>
+                        <span>
+                          {new Date(config.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              ...(isListLayout ? { year: "numeric" } : {})
+                            }
+                          )}
+                        </span>
+                      </div>
                     </div>
+                    {isListLayout && (
+                      <div className="text-sm text-muted-foreground">
+                        <div className="flex justify-between items-center">
+                          <span>Provider</span>
+                          <span className="font-medium">{providerNames[config.provider]}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
                       <Button
-                        size="sm"
+                        size={isListLayout ? "default" : "sm"}
                         variant="outline"
                         onClick={() => handleToggleActive(config)}
                         disabled={updateConfiguration.isPending}
-                        className="h-6 w-6 p-0"
+                        className={isListLayout ? "h-8 px-3 text-sm" : "h-6 w-6 p-0"}
                         title={config.isActive ? "Deactivate" : "Activate"}
                       >
                         {config.isActive ? (
-                          <Pause className="h-3 w-3" />
+                          <>
+                            <Pause className={`h-${isListLayout ? "4" : "3"} w-${isListLayout ? "4" : "3"}`} />
+                            {isListLayout && <span className="ml-1">Deactivate</span>}
+                          </>
                         ) : (
-                          <Play className="h-3 w-3" />
+                          <>
+                            <Play className={`h-${isListLayout ? "4" : "3"} w-${isListLayout ? "4" : "3"}`} />
+                            {isListLayout && <span className="ml-1">Activate</span>}
+                          </>
                         )}
                       </Button>
 
                       {onEditConfiguration && (
                         <Button
-                          size="sm"
+                          size={isListLayout ? "default" : "sm"}
                           variant="outline"
                           onClick={() => onEditConfiguration(config)}
-                          className="h-6 w-6 p-0"
+                          className={isListLayout ? "h-8 px-3 text-sm" : "h-6 w-6 p-0"}
                           title="Edit"
                         >
-                          <Edit className="h-3 w-3" />
+                          <Edit className={`h-${isListLayout ? "4" : "3"} w-${isListLayout ? "4" : "3"}`} />
+                          {isListLayout && <span className="ml-1">Edit</span>}
                         </Button>
                       )}
                     </div>
 
                     <Button
-                      size="sm"
+                      size={isListLayout ? "default" : "sm"}
                       variant="outline"
                       onClick={() => handleDeleteClick(config)}
                       disabled={deleteConfiguration.isPending}
-                      className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className={`${
+                        isListLayout ? "h-8 px-3 text-sm" : "h-6 w-6 p-0"
+                      } text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200 dark:border-red-800`}
                       title="Delete"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className={`h-${isListLayout ? "4" : "3"} w-${isListLayout ? "4" : "3"}`} />
+                      {isListLayout && <span className="ml-1">Delete</span>}
                     </Button>
                   </div>
                 </div>

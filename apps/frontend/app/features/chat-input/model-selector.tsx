@@ -50,7 +50,7 @@ export function ModelSelector({
       value={selectedModelId || ""}
       onValueChange={onModelChange}
     >
-      <SelectTrigger className="h-8 px-3 border-none bg-transparent hover:bg-muted/50 focus:ring-0 text-sm font-medium">
+      <SelectTrigger className="h-8 px-3 text-sm font-medium" size="sm">
         <SelectValue placeholder="Select model..." />
       </SelectTrigger>
       <SelectContent>
@@ -59,7 +59,7 @@ export function ModelSelector({
             <div className="flex items-center gap-2">
               <div
                 className={`w-2 h-2 rounded-full ${
-                  config.isActive ? "bg-green-500" : "bg-gray-400"
+                  config.isActive ? "bg-green-500 dark:bg-green-400" : "bg-muted-foreground"
                 }`}
               />
               <span>{getModelDisplayName(config)}</span>

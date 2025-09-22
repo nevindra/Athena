@@ -157,7 +157,7 @@ function JsonDisplay({ data }: { data: any }) {
           Copy JSON
         </button>
       </div>
-      <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+      <pre className="text-xs font-mono overflow-x-auto whitespace-pre-wrap text-foreground">
         <code>{jsonString}</code>
       </pre>
     </div>
@@ -188,15 +188,15 @@ export function Message({
   if (role === "assistant") {
     return (
       <div className="w-full max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-card rounded-lg border border-border shadow-sm">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+          <div className="px-4 py-3 border-b border-border bg-muted/30 rounded-t-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 bg-gray-600 rounded text-white text-xs flex items-center justify-center font-medium">
+                <div className="w-5 h-5 bg-primary rounded text-primary-foreground text-xs flex items-center justify-center font-medium">
                   ✨
                 </div>
-                <span className="text-sm font-medium text-gray-800">Results</span>
+                <span className="text-sm font-medium text-foreground">Results</span>
               </div>
               
               <div className="flex items-center gap-1">
@@ -207,9 +207,9 @@ export function Message({
                         variant="ghost"
                         size="sm"
                         onClick={handleCopy}
-                        className="h-7 w-7 p-0 hover:bg-gray-200"
+                        className="h-7 w-7 p-0 hover:bg-muted"
                       >
-                        <Copy className="h-3.5 w-3.5 text-gray-600" />
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -226,9 +226,9 @@ export function Message({
                           variant="ghost"
                           size="sm"
                           onClick={onRefresh}
-                          className="h-7 w-7 p-0 hover:bg-gray-200"
+                          className="h-7 w-7 p-0 hover:bg-muted"
                         >
-                          <RefreshCw className="h-3.5 w-3.5 text-gray-600" />
+                          <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -297,7 +297,7 @@ export function Message({
 
             {actualResponse && !isImage && (
               <div
-                className={`text-sm leading-relaxed text-gray-700 ${thinkingContent || (attachments && attachments.length > 0) || jsonData ? "mt-3" : ""}`}
+                className={`text-sm leading-relaxed text-foreground ${thinkingContent || (attachments && attachments.length > 0) || jsonData ? "mt-3" : ""}`}
               >
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
@@ -309,16 +309,16 @@ export function Message({
                       <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
                     ),
                     strong: ({ children }) => (
-                      <strong className="font-semibold text-gray-900">{children}</strong>
+                      <strong className="font-semibold text-foreground">{children}</strong>
                     ),
                     em: ({ children }) => <em className="italic">{children}</em>,
                     code: ({ children }) => (
-                      <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono text-gray-800">
+                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono text-foreground">
                         {children}
                       </code>
                     ),
                     pre: ({ children }) => (
-                      <pre className="bg-gray-100 p-3 rounded-md overflow-x-auto text-xs font-mono my-3 border">
+                      <pre className="bg-muted p-3 rounded-md overflow-x-auto text-xs font-mono my-3 border border-border">
                         {children}
                       </pre>
                     ),
@@ -336,7 +336,7 @@ export function Message({
                       <li className="mb-2 leading-relaxed">{children}</li>
                     ),
                     blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-gray-300 pl-4 my-3 text-gray-600 italic">
+                      <blockquote className="border-l-4 border-border pl-4 my-3 text-muted-foreground italic">
                         {children}
                       </blockquote>
                     ),
@@ -348,8 +348,8 @@ export function Message({
             )}
 
             {/* Timestamp */}
-            <div className="mt-4 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
+            <div className="mt-4 pt-3 border-t border-border/50">
+              <p className="text-xs text-muted-foreground">
                 {timestamp.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -436,12 +436,12 @@ export function Message({
                 ),
                 em: ({ children }) => <em className="italic">{children}</em>,
                 code: ({ children }) => (
-                  <code className="bg-muted/50 px-1 py-0.5 rounded text-xs font-mono">
+                  <code className="bg-background/30 px-1 py-0.5 rounded text-xs font-mono">
                     {children}
                   </code>
                 ),
                 pre: ({ children }) => (
-                  <pre className="bg-muted/50 p-2 rounded-md overflow-x-auto text-xs font-mono my-2">
+                  <pre className="bg-background/30 p-2 rounded-md overflow-x-auto text-xs font-mono my-2">
                     {children}
                   </pre>
                 ),
@@ -459,7 +459,7 @@ export function Message({
                   <li className="mb-2 leading-relaxed">{children}</li>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-4 border-muted-foreground/20 pl-3 my-2 text-muted-foreground">
+                  <blockquote className="border-l-4 border-primary-foreground/30 pl-3 my-2 opacity-80">
                     {children}
                   </blockquote>
                 ),

@@ -12,6 +12,7 @@ import {
   useSession,
 } from "~/hooks/use-sessions";
 import { useSystemPromptStore } from "~/stores/system-prompt-store";
+import { useCurrentUser } from "~/hooks/use-current-user";
 import type { Route } from "./+types/chat.$id";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -44,6 +45,7 @@ interface BackendMessage {
 }
 
 export default function Chat({ params }: Route.ComponentProps) {
+  const { userId } = useCurrentUser();
   const location = useLocation();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -137,7 +139,7 @@ export default function Chat({ params }: Route.ComponentProps) {
             msg.attachments && Array.isArray(msg.attachments)
               ? msg.attachments.map((att) => ({
                 type: "image" as const,
-                url: `/api/files/${msg.sessionId}/${att.id}?userId=01HZXM0K1QRST9VWXYZ01234AB`,
+                url: `/api/files/${msg.sessionId}/${att.id}?userId=${userId}`,
                 name: att.filename,
               }))
               : undefined;
@@ -175,7 +177,7 @@ export default function Chat({ params }: Route.ComponentProps) {
           role: msg.role,
           content: msg.content,
         })),
-        userId: "01HZXM0K1QRST9VWXYZ01234AB",
+        userId: userId || "",
         configurationId: selectedConfig.id,
         sessionId: params.id,
         systemPromptId: selectedSystemPromptId || undefined,
@@ -343,7 +345,7 @@ export default function Chat({ params }: Route.ComponentProps) {
             { label: "Loading...", isCurrentPage: true },
           ]}
         />
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center bg-background">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading chat session...</p>
@@ -363,7 +365,7 @@ export default function Chat({ params }: Route.ComponentProps) {
             { label: "Error", isCurrentPage: true },
           ]}
         />
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center bg-background">
           <div className="text-center">
             <p className="text-destructive mb-4">Failed to load chat session</p>
             <Button
@@ -394,13 +396,13 @@ export default function Chat({ params }: Route.ComponentProps) {
         onHistoryToggle={handleHistoryToggle}
         isHistoryOpen={isHistoryOpen}
       />
-      <div className="flex h-full min-h-0">
+      <div className="flex h-full min-h-0 bg-background">
         {/* Main Chat Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-background">
           {/* Messages Container */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto pb-24"
+            className="flex-1 overflow-y-auto pb-24 bg-background"
             style={{
               scrollBehavior: "auto",
             }}
@@ -422,16 +424,16 @@ export default function Chat({ params }: Route.ComponentProps) {
 
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-muted p-4 rounded-2xl">
+                    <div className="bg-muted/50 backdrop-blur-sm border border-border/40 p-4 rounded-2xl">
                       <div className="flex items-center gap-2">
                         <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
+                          <div className="w-2 h-2 bg-foreground/60 rounded-full animate-pulse" />
                           <div
-                            className="w-2 h-2 bg-current rounded-full animate-pulse"
+                            className="w-2 h-2 bg-foreground/60 rounded-full animate-pulse"
                             style={{ animationDelay: "0.2s" }}
                           />
                           <div
-                            className="w-2 h-2 bg-current rounded-full animate-pulse"
+                            className="w-2 h-2 bg-foreground/60 rounded-full animate-pulse"
                             style={{ animationDelay: "0.4s" }}
                           />
                         </div>
@@ -447,7 +449,7 @@ export default function Chat({ params }: Route.ComponentProps) {
           </div>
 
           {/* Chat Input Container - Separate bottom container */}
-          <div className="sticky bottom-0 w-full">
+          <div className="sticky bottom-0 w-full bg-background/80 backdrop-blur-sm border-t border-border/20">
             <div className="max-w-4xl mx-auto px-4 py-4">
               <EnhancedChatInput
                 onSubmit={handleNewMessage}

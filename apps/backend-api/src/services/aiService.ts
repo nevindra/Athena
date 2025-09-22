@@ -36,7 +36,59 @@ export interface ChatResponse {
   };
 }
 
-// Helper function to create provider instances
+interface ProviderCacheKey {
+  provider: AIProvider;
+  userId: string;
+  configurationId?: string;
+  apiRegistrationId?: string;
+}
+
+class ProviderCache {
+  private cache = new Map<string, any>();
+  private readonly maxSize = 100;
+  private readonly ttl = 5 * 60 * 1000; // 5 minutes
+
+  private createKey(key: ProviderCacheKey): string {
+    return `${key.provider}:${key.userId}:${key.configurationId || 'default'}:${key.apiRegistrationId || 'none'}`;
+  }
+
+  get(key: ProviderCacheKey): any {
+    const cacheKey = this.createKey(key);
+    const entry = this.cache.get(cacheKey);
+
+    if (!entry) return null;
+
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(cacheKey);
+      return null;
+    }
+
+    return entry.provider;
+  }
+
+  set(key: ProviderCacheKey, provider: any): void {
+    const cacheKey = this.createKey(key);
+
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+
+    this.cache.set(cacheKey, {
+      provider,
+      timestamp: Date.now(),
+    });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const providerCache = new ProviderCache();
+
 function createProvider(provider: AIProvider, settings: any) {
   switch (provider) {
     case "gemini":
@@ -47,6 +99,62 @@ function createProvider(provider: AIProvider, settings: any) {
       return new HttpApiProvider(settings);
     default:
       throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
+
+async function getOrCreateProvider(
+  userId: string,
+  configurationId?: string,
+  apiRegistrationId?: string
+): Promise<any> {
+  if (apiRegistrationId) {
+    const cacheKey: ProviderCacheKey = {
+      provider: "http-api",
+      userId,
+      apiRegistrationId,
+    };
+
+    let cachedProvider = providerCache.get(cacheKey);
+    if (cachedProvider) {
+      return cachedProvider;
+    }
+
+    const registration = await db.query.apiRegistrations.findFirst({
+      where: and(
+        eq(apiRegistrations.id, apiRegistrationId),
+        eq(apiRegistrations.userId, userId),
+        eq(apiRegistrations.isActive, true)
+      ),
+    });
+
+    if (!registration) {
+      throw new Error("API registration not found or inactive");
+    }
+
+    const decryptedApiKey = registration.apiKey
+      ? encryptionService.decrypt(registration.apiKey)
+      : undefined;
+
+    const provider = new RegisteredApiProvider(registration, decryptedApiKey);
+    providerCache.set(cacheKey, provider);
+    return provider;
+  } else {
+    const { provider: providerType, settings } = await getAIConfig(userId, configurationId);
+
+    const cacheKey: ProviderCacheKey = {
+      provider: providerType,
+      userId,
+      configurationId,
+    };
+
+    let cachedProvider = providerCache.get(cacheKey);
+    if (cachedProvider) {
+      return cachedProvider;
+    }
+
+    const provider = createProvider(providerType, settings);
+    providerCache.set(cacheKey, provider);
+    return provider;
   }
 }
 
@@ -64,41 +172,11 @@ export async function generateChatResponse(
   } = request;
 
   try {
-    // Get system prompt if provided
-    let systemPrompt = null;
-    if (systemPromptId) {
-      systemPrompt = await getSystemPrompt(userId, systemPromptId);
-    }
+    const [systemPrompt, providerInstance] = await Promise.all([
+      systemPromptId ? getSystemPrompt(userId, systemPromptId) : null,
+      getOrCreateProvider(userId, configurationId, apiRegistrationId),
+    ]);
 
-    let providerInstance: any;
-
-    // Check if using registered API
-    if (apiRegistrationId) {
-      // Get API registration from database
-      const registration = await db.query.apiRegistrations.findFirst({
-        where: and(
-          eq(apiRegistrations.id, apiRegistrationId),
-          eq(apiRegistrations.userId, userId),
-          eq(apiRegistrations.isActive, true)
-        ),
-      });
-
-      if (!registration) {
-        throw new Error("API registration not found or inactive");
-      }
-
-      // Decrypt API key if present
-      const decryptedApiKey = registration.apiKey ? encryptionService.decrypt(registration.apiKey) : undefined;
-
-      // Create registered API provider instance
-      providerInstance = new RegisteredApiProvider(registration, decryptedApiKey);
-    } else {
-      // Use traditional AI configuration
-      const { provider, settings } = await getAIConfig(userId, configurationId);
-      providerInstance = createProvider(provider, settings);
-    }
-
-    // Generate response using the provider
     const result = await providerInstance.generateResponse(
       messages,
       systemPrompt,
@@ -136,41 +214,11 @@ export async function streamChatResponse(request: ChatRequest) {
   } = request;
 
   try {
-    // Get system prompt if provided
-    let systemPrompt = null;
-    if (systemPromptId) {
-      systemPrompt = await getSystemPrompt(userId, systemPromptId);
-    }
+    const [systemPrompt, providerInstance] = await Promise.all([
+      systemPromptId ? getSystemPrompt(userId, systemPromptId) : null,
+      getOrCreateProvider(userId, configurationId, apiRegistrationId),
+    ]);
 
-    let providerInstance: any;
-
-    // Check if using registered API
-    if (apiRegistrationId) {
-      // Get API registration from database
-      const registration = await db.query.apiRegistrations.findFirst({
-        where: and(
-          eq(apiRegistrations.id, apiRegistrationId),
-          eq(apiRegistrations.userId, userId),
-          eq(apiRegistrations.isActive, true)
-        ),
-      });
-
-      if (!registration) {
-        throw new Error("API registration not found or inactive");
-      }
-
-      // Decrypt API key if present
-      const decryptedApiKey = registration.apiKey ? encryptionService.decrypt(registration.apiKey) : undefined;
-
-      // Create registered API provider instance
-      providerInstance = new RegisteredApiProvider(registration, decryptedApiKey);
-    } else {
-      // Use traditional AI configuration
-      const { provider, settings } = await getAIConfig(userId, configurationId);
-      providerInstance = createProvider(provider, settings);
-    }
-
-    // Stream response using the provider
     return await providerInstance.streamResponse(
       messages,
       systemPrompt,
@@ -189,39 +237,10 @@ export async function getAvailableModels(
   apiRegistrationId?: string
 ): Promise<string[]> {
   try {
-    let providerInstance: any;
-
-    // Check if using registered API
-    if (apiRegistrationId) {
-      // Get API registration from database
-      const registration = await db.query.apiRegistrations.findFirst({
-        where: and(
-          eq(apiRegistrations.id, apiRegistrationId),
-          eq(apiRegistrations.userId, userId),
-          eq(apiRegistrations.isActive, true)
-        ),
-      });
-
-      if (!registration) {
-        throw new Error("API registration not found or inactive");
-      }
-
-      // Decrypt API key if present
-      const decryptedApiKey = registration.apiKey ? encryptionService.decrypt(registration.apiKey) : undefined;
-
-      // Create registered API provider instance
-      providerInstance = new RegisteredApiProvider(registration, decryptedApiKey);
-    } else {
-      // Use traditional AI configuration
-      const { provider, settings } = await getAIConfig(userId, configurationId);
-      providerInstance = createProvider(provider, settings);
-    }
-
-    // Get available models from the provider
+    const providerInstance = await getOrCreateProvider(userId, configurationId, apiRegistrationId);
     return await providerInstance.getAvailableModels();
   } catch (error) {
     console.error("Error fetching available models:", error);
-    // Return default models if API call fails
     return ["llama3.2", "llama3.2:1b", "phi3", "qwen2"];
   }
 }

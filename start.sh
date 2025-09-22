@@ -1,21 +1,31 @@
 #!/bin/sh
 set -e
 
+# Set default frontend port if not provided
+FRONTEND_PORT=${FRONTEND_PORT:-4003}
+
 echo "=== Starting Athena Application with nginx Reverse Proxy ==="
 echo "Environment: $NODE_ENV"
 echo "Backend directory: /app/apps/backend-api"
 echo "Frontend directory: /app/apps/frontend"
-echo "Nginx will serve on port 80"
+echo "Frontend port: $FRONTEND_PORT"
+echo "Backend port: 3000 (internal)"
 echo ""
 
 # Function to handle cleanup
 cleanup() {
+    # Prevent multiple cleanup calls
+    if [ "$CLEANUP_RUNNING" = "1" ]; then
+        return
+    fi
+    export CLEANUP_RUNNING=1
+
     echo "Shutting down..."
     # Stop nginx gracefully
     nginx -s quit 2>/dev/null || true
     # Kill all background processes
-    kill 0
-    wait
+    kill 0 2>/dev/null || true
+    wait 2>/dev/null || true
     echo "All processes stopped."
     exit 0
 }
@@ -26,74 +36,64 @@ trap cleanup TERM INT
 # Start backend in background
 echo "=== Starting Backend (Port 3000) ==="
 cd /app/apps/backend-api
-echo "Current directory: $(pwd)"
-echo "Files in directory:"
-ls -la
-echo "Package.json exists:"
-ls -la package.json 2>/dev/null || echo "No package.json found"
-echo "Source directory:"
-ls -la src/ 2>/dev/null || echo "No src directory found"
-echo "Production environment file:"
-ls -la .env.production 2>/dev/null || echo "No .env.production found"
-echo ""
 
 # Use production environment file if it exists
 if [ -f .env.production ]; then
-    echo "Using production environment configuration"
+    echo "✅ Using production environment configuration"
     cp .env.production .env
 else
-    echo "Warning: No .env.production found, using defaults"
+    echo "⚠️  Warning: No .env.production found, using defaults"
 fi
 
-echo "Starting backend with: bun run src/index.ts"
+echo "🚀 Starting backend..."
 bun run src/index.ts &
 BACKEND_PID=$!
-echo "Backend started with PID: $BACKEND_PID"
 
 # Wait a bit for backend to start
-sleep 2
+sleep 3
 
 # Check if backend is still running
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo "ERROR: Backend process died immediately!"
+    echo "❌ ERROR: Backend process died immediately!"
     wait $BACKEND_PID
     exit 1
 fi
 
-echo ""
-echo "=== Frontend SPA Build Check ==="
-cd /app/apps/frontend
-echo "Current directory: $(pwd)"
-echo "Build directory contents:"
-ls -la build/ 2>/dev/null || echo "ERROR: No build directory found!"
-echo "Client build contents:"
-ls -la build/client/ 2>/dev/null || echo "ERROR: No client build directory found!"
-echo "Checking for index.html:"
-ls -la build/client/index.html 2>/dev/null || echo "ERROR: No index.html found!"
-echo "SPA will be served statically by nginx from build/client directory"
+echo "✅ Backend started successfully (PID: $BACKEND_PID)"
 
 echo ""
-echo "=== Starting nginx Reverse Proxy ==="
-echo "Testing nginx configuration..."
+echo "=== Checking Frontend Build ==="
+cd /app/apps/frontend
+if [ ! -f "build/client/index.html" ]; then
+    echo "❌ ERROR: Frontend build not found!"
+    exit 1
+fi
+echo "✅ Frontend SPA build ready"
+
+echo ""
+echo "=== Configuring nginx ==="
+echo "🔧 Generating nginx config for port $FRONTEND_PORT..."
+sed "s/__FRONTEND_PORT__/$FRONTEND_PORT/g" /app/nginx.conf.template > /etc/nginx/nginx.conf
+
+echo "🧪 Testing nginx configuration..."
 nginx -t
 if [ $? -ne 0 ]; then
-    echo "ERROR: nginx configuration is invalid!"
+    echo "❌ ERROR: nginx configuration is invalid!"
     cleanup
     exit 1
 fi
 
-echo "Starting nginx..."
+echo "🚀 Starting nginx..."
 nginx
-echo "nginx started successfully"
+echo "✅ nginx started successfully"
 
 echo ""
-echo "=== All services started ==="
-echo "Backend PID: $BACKEND_PID"
-echo "nginx: Running (check with 'nginx -t')"
-echo "Frontend: Served statically by nginx from SPA build"
-echo "Access the application at http://localhost (port 80)"
-echo "API available at http://localhost/api"
-echo "Waiting for backend process... (Ctrl+C to stop)"
+echo "🎉 === Athena Started Successfully ==="
+echo "📱 Frontend: http://localhost:$FRONTEND_PORT"
+echo "🔌 API: http://localhost:$FRONTEND_PORT/api"
+echo "🛑 Press Ctrl+C to stop all services"
+echo ""
+echo "⏳ All process is running..."
 
 # Wait for backend process to exit
 wait $BACKEND_PID

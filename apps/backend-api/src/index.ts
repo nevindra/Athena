@@ -2,8 +2,10 @@ import { cors } from "@elysiajs/cors";
 import swagger from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 import { testConnection } from "./config/database";
+import { runMigrations } from "./db/auto-migrate";
 import { env, validateEnv } from "./config/env";
 import { StorageFactory } from "./services/storage";
+import { auth } from "./auth";
 import { aiRoutes } from "./routes/ai";
 import { apiRegistrationsRoutes } from "./routes/api-registrations";
 import { apiMetricsRoutes } from "./routes/api-metrics";
@@ -29,18 +31,35 @@ validateEnv();
 const app = new Elysia()
   .use(
     cors({
-      origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map(origin => origin.trim()),
-      credentials: env.CORS_ORIGIN !== "*",
+      origin: env.NODE_ENV === "development"
+        ? ["http://localhost:5173", "http://localhost:3001", "http://localhost:3000"]
+        : env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map(origin => origin.trim()),
+      credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Cookie",
+        "Set-Cookie",
+        "X-Better-Auth-Header"
+      ],
+      exposeHeaders: ["Set-Cookie"],
     })
   )
+  // Mount Better Auth handler BEFORE other middleware to ensure CORS applies
+  .mount(auth.handler)
   .use(swagger())
   .derive(({ request, path }) => {
     const startTime = Date.now();
     const method = request.method;
     const url = new URL(request.url);
     const userId = url.searchParams.get("userId") || undefined;
+
+    // Skip metrics for external API routes (they have their own metrics)
+    const isExternalApi = path.startsWith("/api/external");
 
     // Log incoming request
     logApiRequest(method, path, userId);
@@ -50,10 +69,14 @@ const app = new Elysia()
       derivedUserId: userId,
       derivedMethod: method,
       derivedPath: path,
+      isExternalApi,
     };
   })
   .onAfterHandle(
-    ({ derivedMethod, derivedPath, startTime, response, derivedUserId }) => {
+    ({ derivedMethod, derivedPath, startTime, response, derivedUserId, isExternalApi }) => {
+      // Skip global logging for external API routes (they have their own metrics)
+      if (isExternalApi) return;
+
       const duration = Date.now() - startTime;
 
       // Check if response indicates success or error
@@ -76,13 +99,16 @@ const app = new Elysia()
     }
   )
   // Global error handling
-  .onError(({ error, code, derivedMethod, derivedPath, derivedUserId }) => {
-    logApiError(
-      derivedMethod || "UNKNOWN",
-      derivedPath || "/",
-      error,
-      derivedUserId
-    );
+  .onError(({ error, code, derivedMethod, derivedPath, derivedUserId, isExternalApi }) => {
+    // Skip global error logging for external API routes (they have their own metrics)
+    if (!isExternalApi) {
+      logApiError(
+        derivedMethod || "UNKNOWN",
+        derivedPath || "/",
+        error,
+        derivedUserId
+      );
+    }
 
     if (code === "VALIDATION") {
       return {
@@ -127,13 +153,22 @@ const app = new Elysia()
     hostname: env.NODE_ENV === "production" ? "0.0.0.0" : "localhost",
   });
 
-// Test database connection on startup
-testConnection().then((connected) => {
+// Test database connection and run migrations on startup
+testConnection().then(async (connected) => {
   if (!connected) {
     logger.error("Failed to connect to database. Exiting...");
     process.exit(1);
   }
   logger.success("Database connection established");
+
+  // Run database migrations automatically
+  try {
+    await runMigrations();
+    logger.success("Database schema is up to date");
+  } catch (error) {
+    logger.error("Failed to run database migrations:", error);
+    process.exit(1);
+  }
 });
 
 // Initialize storage provider on startup to show connection logs

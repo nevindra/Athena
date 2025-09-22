@@ -16,6 +16,7 @@ export const env = {
 
   // API
   API_PREFIX: process.env.API_PREFIX || "/api",
+  BASE_URL: process.env.BASE_URL || "http://localhost:3000",
   CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
 
   // Storage

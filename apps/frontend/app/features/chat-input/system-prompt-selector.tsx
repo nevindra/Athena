@@ -37,7 +37,7 @@ export function SystemPromptSelector({
         }
       }}
     >
-      <SelectTrigger className="h-8 px-3 border-none bg-transparent hover:bg-muted/50 focus:ring-0 text-sm font-medium">
+      <SelectTrigger className="h-8 px-3 text-sm font-medium" size="sm">
         <SelectValue placeholder="System prompt..." />
       </SelectTrigger>
       <SelectContent>

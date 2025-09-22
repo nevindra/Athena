@@ -96,7 +96,7 @@ export function AppHeader({
           </Button>
 
           {/* Share Button */}
-          <Button
+          {/*<Button
             variant="ghost"
             size="sm"
             onClick={handleShare}
@@ -104,7 +104,7 @@ export function AppHeader({
           >
             <Share className="h-4 w-4" />
             <span className="hidden sm:inline">Share</span>
-          </Button>
+          </Button>*/}
 
           {/* History Toggle */}
           {showHistoryToggle && (

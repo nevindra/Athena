@@ -8,8 +8,6 @@ import type {
 import { apiClient, makeApiCall } from "~/lib/api-client";
 import { filesToFileData } from "~/utils/fileUtils";
 
-// Demo user ID (ULID format) - in a real app, this would come from auth
-export const DEMO_USER_ID = "01HZXM0K1QRST9VWXYZ01234AB";
 
 export const sessionsApi = {
   // Get all sessions for a user

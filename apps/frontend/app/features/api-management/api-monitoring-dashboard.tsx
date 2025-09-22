@@ -15,7 +15,6 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Copy,
   Edit3,
   Eye,
   EyeOff,
@@ -39,8 +38,10 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { CopyButton } from "~/components/ui/copy-button";
 import { useConfigurations } from "~/hooks/use-configurations";
 import { useSystemPrompts } from "~/hooks/use-system-prompts";
+import { useCurrentUser } from "~/hooks/use-current-user";
 import type { ApiRegistration, TimeRange } from "@athena/shared";
 import { calculateSuccessRate, calculateErrorRate } from "@athena/shared";
 
@@ -67,6 +68,7 @@ interface ApiMetricsDetails {
   successRate: number;
 }
 
+
 interface ApiMonitoringCardProps {
   api: ApiStatus;
   metrics: ApiMetricsDetails;
@@ -82,9 +84,14 @@ function ApiKeyDisplay({ apiKey, apiName }: { apiKey: string; apiName: string })
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(apiKey);
-      toast.success("API key copied to clipboard");
+      toast.success("API key copied to clipboard", {
+        duration: 2000,
+      });
     } catch (err) {
-      toast.error("Failed to copy API key");
+      toast.error("Failed to copy API key", {
+        duration: 3000,
+      });
+      throw err;
     }
   };
 
@@ -103,14 +110,10 @@ function ApiKeyDisplay({ apiKey, apiName }: { apiKey: string; apiName: string })
       >
         {isVisible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={copyToClipboard}
-        className="h-6 w-6 p-0"
-      >
-        <Copy className="h-3 w-3" />
-      </Button>
+      <CopyButton
+        onCopy={copyToClipboard}
+        label="API key"
+      />
     </div>
   );
 }
@@ -158,9 +161,14 @@ function ApiMonitoringCard({ api, metrics, onViewDocumentation, onEdit, onDelete
   const copyEndpoint = async () => {
     try {
       await navigator.clipboard.writeText(api.endpoint);
-      toast.success("Endpoint copied to clipboard");
+      toast.success("Endpoint copied to clipboard", {
+        duration: 2000,
+      });
     } catch (err) {
-      toast.error("Failed to copy endpoint");
+      toast.error("Failed to copy endpoint", {
+        duration: 3000,
+      });
+      throw err;
     }
   };
 
@@ -229,14 +237,11 @@ function ApiMonitoringCard({ api, metrics, onViewDocumentation, onEdit, onDelete
           {/* Endpoint with Copy Button */}
           <div className="flex items-center justify-between bg-muted/30 rounded p-2">
             <code className="text-xs font-mono truncate flex-1 mr-2">{api.endpoint}</code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={copyEndpoint}
-              className="h-6 w-6 p-0 flex-shrink-0"
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
+            <CopyButton
+              onCopy={copyEndpoint}
+              label="endpoint URL"
+              className="flex-shrink-0"
+            />
           </div>
 
           {/* Toggle Details Button */}
@@ -308,11 +313,9 @@ function ApiMonitoringCard({ api, metrics, onViewDocumentation, onEdit, onDelete
 }
 
 export function ApiMonitoringDashboard() {
-  // TODO: Get actual user ID from auth context
-  const userId = "01HZXM0K1QRST9VWXYZ01234AB"; // Using existing user ID
+  const { userId } = useCurrentUser();
 
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedApi, setSelectedApi] = useState<ApiRegistration | null>(null);
   const [docDialogOpen, setDocDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -325,10 +328,10 @@ export function ApiMonitoringDashboard() {
     isActive: true,
   });
 
-  const { data: registrations, isLoading, error, refetch } = useApiRegistrations(userId);
-  const { data: configurations } = useConfigurations();
-  const { data: systemPrompts } = useSystemPrompts();
-  const { data: metricsSummary } = useMetricsSummary(userId, timeRange);
+  const { data: registrations, isLoading, error } = useApiRegistrations(userId || "");
+  const { data: configurations } = useConfigurations(userId || "");
+  const { data: systemPrompts } = useSystemPrompts(userId || "");
+  const { data: metricsSummary } = useMetricsSummary(userId || "", timeRange);
   const deleteApiRegistration = useDeleteApiRegistration();
   const updateApiRegistration = useUpdateApiRegistration();
 
@@ -355,15 +358,6 @@ export function ApiMonitoringDashboard() {
     };
   }) || [];
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refetch();
-    } catch (error) {
-      toast.error("Failed to refresh API data");
-    }
-    setIsRefreshing(false);
-  };
 
   const handleViewDocumentation = (apiId: string) => {
     const api = registrations?.find(reg => reg.id === apiId);
@@ -456,7 +450,7 @@ export function ApiMonitoringDashboard() {
             <p className="text-sm text-muted-foreground mt-1">
               {error instanceof Error ? error.message : "Unknown error occurred"}
             </p>
-            <Button onClick={handleRefresh} className="mt-4">
+            <Button onClick={() => window.location.reload()} className="mt-4">
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
@@ -499,15 +493,6 @@ export function ApiMonitoringDashboard() {
                 <SelectItem value="30d">30d</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-              {isRefreshing ? "Refreshing..." : "Refresh"}
-            </Button>
           </div>
         </CardHeader>
         <CardContent>

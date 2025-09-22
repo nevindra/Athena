@@ -25,7 +25,7 @@ import {
   useUpdateSession,
   useUserSessions,
 } from "~/hooks/use-sessions";
-import { DEMO_USER_ID } from "~/services/sessions-api";
+import { useAuthenticatedUserId } from "~/hooks/use-current-user";
 
 interface ChatSession {
   id: string;
@@ -40,9 +40,10 @@ export function NavChatHistory() {
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
 
-  const { data: sessions, isLoading, error } = useUserSessions(DEMO_USER_ID);
-  const deleteSessionMutation = useDeleteSession(DEMO_USER_ID);
-  const updateSessionMutation = useUpdateSession(DEMO_USER_ID);
+  const userId = useAuthenticatedUserId();
+  const { data: sessions, isLoading, error } = useUserSessions(userId);
+  const deleteSessionMutation = useDeleteSession(userId);
+  const updateSessionMutation = useUpdateSession(userId);
 
   const handleNewChat = () => {
     setIsCreatingChat(true);

@@ -21,6 +21,7 @@ import {
   useSystemPrompts,
   useUpdateSystemPrompt,
 } from "~/hooks/use-system-prompts";
+import { useAuthenticatedUserId } from "~/hooks/use-current-user";
 import type { Route } from "./+types/system-prompts";
 
 export function meta(_: Route.MetaArgs) {
@@ -37,15 +38,17 @@ export function meta(_: Route.MetaArgs) {
 type ViewType = "list" | "form" | "empty";
 
 export default function SystemPrompts() {
+  const userId = useAuthenticatedUserId();
+
   // API hooks
   const {
     data: systemPrompts,
     isLoading: isLoadingPrompts,
     error,
-  } = useSystemPrompts();
-  const createMutation = useCreateSystemPrompt();
-  const updateMutation = useUpdateSystemPrompt();
-  const deleteMutation = useDeleteSystemPrompt();
+  } = useSystemPrompts(userId);
+  const createMutation = useCreateSystemPrompt(userId);
+  const updateMutation = useUpdateSystemPrompt(userId);
+  const deleteMutation = useDeleteSystemPrompt(userId);
 
   // Local state
   const [currentView, setCurrentView] = useState<ViewType>("list");

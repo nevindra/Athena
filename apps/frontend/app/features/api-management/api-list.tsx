@@ -1,7 +1,7 @@
 "use client";
 
 import type { ApiRegistration } from "@athena/shared";
-import { MoreHorizontal, Trash2, Edit3, Eye, EyeOff, Copy, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit3, Eye, EyeOff, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent } from "~/components/ui/card";
+import { CopyButton } from "~/components/ui/copy-button";
 import { useDeleteApiRegistration } from "~/hooks/use-api-registrations";
 import { ApiDocumentationDialog } from "./api-documentation-dialog";
 
@@ -20,6 +21,7 @@ interface ApiListProps {
   apis: ApiRegistration[];
   userId: string;
 }
+
 
 interface ApiRegistrationCardProps {
   api: ApiRegistration;
@@ -62,7 +64,13 @@ function ApiRegistrationCard({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={api.isActive ? "default" : "secondary"}>
+              <Badge
+                variant="secondary"
+                className={api.isActive
+                  ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                  : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-400 dark:border-gray-800"
+                }
+              >
                 {api.isActive ? "Active" : "Inactive"}
               </Badge>
               <DropdownMenu>
@@ -98,14 +106,11 @@ function ApiRegistrationCard({
             <code className="text-xs font-mono truncate flex-1 mr-2">
               {api.baseUrl}/chat
             </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onCopyEndpoint(`${api.baseUrl}/chat`)}
-              className="h-6 w-6 p-0 flex-shrink-0"
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
+            <CopyButton
+              onCopy={() => onCopyEndpoint(`${api.baseUrl}/chat`)}
+              label="endpoint URL"
+              className="flex-shrink-0"
+            />
           </div>
 
           {/* Toggle Details Button */}
@@ -126,7 +131,7 @@ function ApiRegistrationCard({
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Configuration ID:</span>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="outline" className="text-xs">
                     {api.configurationId}
                   </Badge>
                 </div>
@@ -161,14 +166,10 @@ function ApiRegistrationCard({
                           <EyeOff className="h-3 w-3" />
                         )}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onCopyApiKey(api.apiKey)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
+                      <CopyButton
+                        onCopy={() => onCopyApiKey(api.apiKey)}
+                        label="API key"
+                      />
                     </>
                   )}
                 </div>
@@ -235,9 +236,14 @@ export function ApiList({ apis, userId }: ApiListProps) {
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success(`${label} copied to clipboard`);
+      toast.success(`${label} copied to clipboard`, {
+        duration: 2000,
+      });
     } catch (error) {
-      toast.error(`Failed to copy ${label.toLowerCase()}`);
+      toast.error(`Failed to copy ${label.toLowerCase()}`, {
+        duration: 3000,
+      });
+      throw error; // Re-throw to let CopyButton handle the visual state
     }
   };
 

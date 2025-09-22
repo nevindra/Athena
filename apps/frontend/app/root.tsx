@@ -7,11 +7,14 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
+  useLocation,
 } from "react-router";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "~/context/theme-context";
+import { AuthProvider } from "~/components/auth-provider";
+import { ProtectedRoute } from "~/components/protected-route";
 import { queryClient } from "~/lib/query-client";
 
 import type { Route } from "./+types/root";
@@ -37,6 +40,24 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+function LayoutContent({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isAuthRoute = location.pathname === "/login" || location.pathname === "/signup";
+
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
+  return (
+    <ProtectedRoute>
+      <SidebarProvider defaultOpen={true}>
+        <AppSidebar variant="inset" />
+        <SidebarInset>{children}</SidebarInset>
+      </SidebarProvider>
+    </ProtectedRoute>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -45,14 +66,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (!theme) {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  document.documentElement.classList.add(theme);
+                  document.body.classList.add(theme);
+                } catch (e) {
+                  document.documentElement.classList.add('dark');
+                  document.body.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
-            <SidebarProvider defaultOpen={true}>
-              <AppSidebar variant="inset" />
-              <SidebarInset>{children}</SidebarInset>
-            </SidebarProvider>
+            <AuthProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </AuthProvider>
             <ReactQueryDevtools initialIsOpen={false} />
             <ScrollRestoration />
             <Scripts />

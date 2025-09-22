@@ -5,25 +5,50 @@ import {
   handleStreamChatRequest,
 } from "../controllers/aiController";
 
+interface ErrorResponse {
+  success: false;
+  error: string;
+  code?: string;
+}
+
+interface SuccessResponse<T = any> {
+  success: true;
+  data: T;
+}
+
+type ApiResponse<T = any> = SuccessResponse<T> | ErrorResponse;
+
+function createErrorResponse(error: unknown, defaultMessage: string): ErrorResponse {
+  if (error instanceof Error) {
+    return {
+      success: false,
+      error: error.message,
+      code: error.name !== "Error" ? error.name : undefined,
+    };
+  }
+  return {
+    success: false,
+    error: defaultMessage,
+  };
+}
+
+function createSuccessResponse<T>(data: T): SuccessResponse<T> {
+  return {
+    success: true,
+    data,
+  };
+}
+
 export const aiRoutes = new Elysia({ prefix: "/ai" })
   .post(
     "/chat",
     async ({ body }) => {
       try {
         const response = await handleChatRequest(body);
-        return {
-          success: true,
-          data: response,
-        };
+        return createSuccessResponse(response);
       } catch (error) {
         console.error("Chat request error:", error);
-        return {
-          success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to process chat request",
-        };
+        return createErrorResponse(error, "Failed to process chat request");
       }
     },
     {
@@ -79,19 +104,12 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
     async ({ body }) => {
       try {
         const stream = await handleStreamChatRequest(body);
-
-        // Return the stream directly - Elysia supports this for AI SDK integration
         return stream;
       } catch (error) {
         console.error("Stream chat request error:", error);
+        const errorResponse = createErrorResponse(error, "Failed to process stream chat request");
         return new Response(
-          JSON.stringify({
-            success: false,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Failed to process stream chat request",
-          }),
+          JSON.stringify(errorResponse),
           {
             status: 500,
             headers: { "Content-Type": "application/json" },
@@ -138,21 +156,10 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
           query.configurationId,
           query.apiRegistrationId
         );
-        return {
-          success: true,
-          data: {
-            models,
-          },
-        };
+        return createSuccessResponse({ models });
       } catch (error) {
         console.error("Get models request error:", error);
-        return {
-          success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to fetch available models",
-        };
+        return createErrorResponse(error, "Failed to fetch available models");
       }
     },
     {

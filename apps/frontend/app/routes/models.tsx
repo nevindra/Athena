@@ -6,6 +6,7 @@ import { ProviderSelection } from "@/features/models/provider-selection";
 import type { AIConfiguration, AIProvider } from "@athena/shared";
 import { useState } from "react";
 import { useConfigurations } from "~/hooks/use-configurations";
+import { useAuthenticatedUserId } from "~/hooks/use-current-user";
 import type { Route } from "./+types/models";
 
 export function meta(_: Route.MetaArgs) {
@@ -21,7 +22,8 @@ export function meta(_: Route.MetaArgs) {
 type AIProviderOrNull = AIProvider | null;
 
 export default function Models() {
-  const { data: configurations, isLoading } = useConfigurations();
+  const userId = useAuthenticatedUserId();
+  const { data: configurations, isLoading } = useConfigurations(userId);
   const [selectedProvider, setSelectedProvider] =
     useState<AIProviderOrNull>(null);
   const [step, setStep] = useState<"list" | "selection" | "configuration">(

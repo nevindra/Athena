@@ -43,6 +43,13 @@
       "when": 1758462712019,
       "tag": "0005_married_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758527396143,
+      "tag": "0006_fearless_doorman",
+      "breakpoints": true
     }
   ]
 }

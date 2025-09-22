@@ -9,34 +9,35 @@ import { queryKeys } from "~/lib/query-client";
 import { configurationsApi } from "~/services/configurations-api";
 
 // Hook to get all configurations
-export function useConfigurations() {
+export function useConfigurations(userId: string) {
   return useQuery({
-    queryKey: queryKeys.all(),
-    queryFn: configurationsApi.getConfigurations,
+    queryKey: [...queryKeys.all(), userId],
+    queryFn: () => configurationsApi.getConfigurations(userId),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!userId,
   });
 }
 
 // Hook to get a specific configuration by ID
-export function useConfiguration(configId: string | null) {
+export function useConfiguration(configId: string | null, userId: string) {
   return useQuery({
-    queryKey: queryKeys.byId(configId || ""),
-    queryFn: () => configurationsApi.getConfiguration(configId!),
-    enabled: !!configId, // Only run query if configId exists
+    queryKey: [...queryKeys.byId(configId || ""), userId],
+    queryFn: () => configurationsApi.getConfiguration(configId!, userId),
+    enabled: !!configId && !!userId, // Only run query if both exist
   });
 }
 
 // Hook to create a new configuration
-export function useCreateConfiguration() {
+export function useCreateConfiguration(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateConfigRequest) =>
-      configurationsApi.createConfiguration(data),
+      configurationsApi.createConfiguration(data, userId),
     onSuccess: (newConfig: AIConfiguration) => {
       // Update the configurations list in cache
       queryClient.setQueryData<AIConfiguration[]>(
-        queryKeys.all(),
+        [...queryKeys.all(), userId],
         (oldConfigs) => {
           if (!oldConfigs) return [newConfig];
           return [...oldConfigs, newConfig];
@@ -53,7 +54,7 @@ export function useCreateConfiguration() {
 }
 
 // Hook to update an existing configuration
-export function useUpdateConfiguration() {
+export function useUpdateConfiguration(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -63,14 +64,14 @@ export function useUpdateConfiguration() {
     }: {
       configId: string;
       data: UpdateConfigRequest;
-    }) => configurationsApi.updateConfiguration(configId, data),
+    }) => configurationsApi.updateConfiguration(configId, data, userId),
     onSuccess: (updatedConfig: AIConfiguration) => {
       // Update the specific configuration in cache
-      queryClient.setQueryData(queryKeys.byId(updatedConfig.id), updatedConfig);
+      queryClient.setQueryData([...queryKeys.byId(updatedConfig.id), userId], updatedConfig);
 
       // Update the configuration in the list
       queryClient.setQueryData<AIConfiguration[]>(
-        queryKeys.all(),
+        [...queryKeys.all(), userId],
         (oldConfigs) => {
           if (!oldConfigs) return [updatedConfig];
           return oldConfigs.map((config) =>
@@ -86,16 +87,16 @@ export function useUpdateConfiguration() {
 }
 
 // Hook to delete a configuration
-export function useDeleteConfiguration() {
+export function useDeleteConfiguration(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (configId: string) =>
-      configurationsApi.deleteConfiguration(configId),
+      configurationsApi.deleteConfiguration(configId, userId),
     onSuccess: (_, deletedConfigId: string) => {
       // Remove the configuration from the list
       queryClient.setQueryData<AIConfiguration[]>(
-        queryKeys.all(),
+        [...queryKeys.all(), userId],
         (oldConfigs) => {
           if (!oldConfigs) return [];
           return oldConfigs.filter((config) => config.id !== deletedConfigId);
@@ -103,7 +104,7 @@ export function useDeleteConfiguration() {
       );
 
       // Remove the specific configuration from cache
-      queryClient.removeQueries({ queryKey: queryKeys.byId(deletedConfigId) });
+      queryClient.removeQueries({ queryKey: [...queryKeys.byId(deletedConfigId), userId] });
     },
     onError: (error) => {
       console.error("Failed to delete configuration:", error);
@@ -130,9 +131,11 @@ export function useOptimisticConfigUpdate() {
     configId: string,
     updates: Partial<AIConfiguration>
   ) => {
-    // Optimistically update the cache
+    // Note: This function now requires userId to be passed when called
+    // Optimistically update the cache - userId should be provided by caller
+    const userId = updates.userId || ''; // Fallback, but caller should provide userId
     queryClient.setQueryData<AIConfiguration[]>(
-      queryKeys.all(),
+      [...queryKeys.all(), userId],
       (oldConfigs) => {
         if (!oldConfigs) return [];
         return oldConfigs.map((config) =>
@@ -142,7 +145,7 @@ export function useOptimisticConfigUpdate() {
     );
 
     queryClient.setQueryData(
-      queryKeys.byId(configId),
+      [...queryKeys.byId(configId), userId],
       (oldConfig: AIConfiguration | undefined) => {
         if (!oldConfig) return undefined;
         return { ...oldConfig, ...updates };

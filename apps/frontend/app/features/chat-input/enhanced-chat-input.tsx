@@ -10,6 +10,7 @@ import {
 } from "~/components/ui/tooltip";
 import { useConfigurations } from "~/hooks/use-configurations";
 import { useSystemPrompts } from "~/hooks/use-system-prompts";
+import { useCurrentUser } from "~/hooks/use-current-user";
 import { useModelStore } from "~/stores/model-store";
 import { useSystemPromptStore } from "~/stores/system-prompt-store";
 import { ChatTextarea } from "./chat-textarea";
@@ -49,10 +50,11 @@ export function EnhancedChatInput({
   const [isCompact, setIsCompact] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: configurations, isLoading } = useConfigurations();
+  const { userId } = useCurrentUser();
+  const { data: configurations, isLoading } = useConfigurations(userId || "");
   const { selectedModelId, setSelectedModel: setStoredModel } = useModelStore();
 
-  const { data: systemPrompts } = useSystemPrompts();
+  const { data: systemPrompts } = useSystemPrompts(userId || "");
   const {
     selectedSystemPromptId,
     setSelectedSystemPrompt: setStoredSystemPrompt,

@@ -66,13 +66,6 @@ bun run lint:fix     # Auto-fix Biome issues
 bun run format       # Format code with Biome
 ```
 
-### Frontend-Specific
-```bash
-cd apps/frontend
-bun run typecheck    # Type checking with TypeScript
-bun run start        # Production server
-```
-
 ## Architecture Notes
 
 ### Backend (Elysia)
@@ -96,110 +89,58 @@ bun run start        # Production server
 - TypeScript strict mode enabled
 - Path aliases configured: `~` maps to `app/` directory in frontend
 
-## Apple Design Principles
+## UI Design Guidelines
 
-### Human Interface Guidelines for Chat Applications
+### Design Aesthetic: Sleek Minimalism with Apple Consistency
 
-**Clarity**
-- Prioritize content over chrome - message content should dominate the interface
-- Use clear typography hierarchy: message text, timestamps, sender names
-- Implement sufficient contrast ratios (4.5:1 minimum for text)
-- Use whitespace strategically to separate conversations and message groups
+**Visual System (Linear/Airbnb Inspired)**
+- **Typography**: Clean, readable fonts with generous line spacing and subtle weight variations
+- **Spacing**: Generous whitespace using 8px grid system, breathable layouts that feel uncluttered
+- **Colors**: Sophisticated neutral palette with purposeful accent colors, excellent contrast ratios
+- **Surfaces**: Clean backgrounds, subtle borders (1px), minimal shadows for depth when needed
 
-**Deference**
-- UI should enhance functionality without competing with content
-- Subtle animations and transitions that don't distract from reading
-- Use system fonts (SF Pro) and semantic colors that adapt to user preferences
-- Support both light and dark modes seamlessly
+**Apple-Level Consistency**
+- **Predictable Patterns**: Every similar element behaves identically across the entire application
+- **Systematic Design**: Consistent button styles, form patterns, and interaction states
+- **Seamless Theming**: Flawless light/dark mode transitions with semantic color tokens
+- **Polished Details**: Perfect alignment, consistent corner radius (6px-12px), and refined micro-interactions
 
-**Depth**
-- Create visual hierarchy through elevation and layering
-- Message bubbles should have subtle depth without heavy shadows
-- Use blur effects and translucency for overlays and modals
-- Implement smooth parallax scrolling for long conversations
+**Modern Interaction Design**
+- **Micro-animations**: Subtle, fast transitions (150-300ms) that feel natural and purposeful
+- **Progressive Disclosure**: Clean information hierarchy that reveals complexity gradually
+- **Touch Targets**: Generous interactive areas (44px minimum) with clear hover/focus states
+- **Feedback Systems**: Instant visual confirmation for actions with elegant loading states
 
-**Aesthetic Integrity**
-- Maintain visual consistency across all chat elements
-- Use rounded corners consistently (8px for bubbles, 12px for containers)
-- Apply consistent spacing using 8pt grid system
-- Color palette should be purposeful and limited
+### Essential UX Principles
 
-**Consistency**
-- Follow established patterns from system messaging apps
-- Use familiar gestures: swipe actions, pull-to-refresh, tap interactions
-- Maintain consistent button placement and sizing
-- Implement predictable navigation patterns
+**Fitts's Law**: Position primary actions prominently with adequate sizing and convenient placement
 
-**Direct Manipulation**
-- Enable direct interaction with messages (copy, reply, react)
-- Support drag-and-drop for file attachments
-- Implement touch-friendly target sizes (minimum 44pt)
-- Provide immediate visual feedback for all interactions
+**Hick's Law**: Streamline choices through clean navigation and contextual feature disclosure
 
-**Feedback**
-- Show typing indicators and message delivery status
-- Provide haptic feedback for important actions
-- Use subtle animations to acknowledge user input
-- Display loading states for AI responses
+**Jakob's Law**: Leverage familiar patterns while elevating them with refined execution
 
-**Metaphors**
-- Use familiar chat conventions (bubbles, threads, channels)
-- Implement recognizable icons from SF Symbols
-- Apply natural physics to scrolling and animations
-- Use spatial relationships to show conversation flow
+**Gestalt Principles**: Create visual harmony through strategic grouping and consistent styling
 
-**User Control**
-- Allow customization of text size, theme, and notification preferences
-- Provide clear ways to delete, edit, or archive conversations
-- Enable search and filtering capabilities
-- Offer granular privacy and data controls
+## Core Features
 
-## Essential UX Laws for Chat Applications
+### AI Chat System
+Interactive chat interface with streaming AI responses, session management, and message history. Uses configured AI models and system prompts for contextual conversations.
 
-### Fitts's Law
-- **Principle**: Time to reach a target depends on size and distance
-- **Implementation**: 
-  - Make send buttons and frequently used actions larger (minimum 44px)
-  - Position important controls within thumb reach on mobile
-  - Use sticky input areas that don't require scrolling to access
+### Model Management
+Configure and manage AI providers (OpenAI, Gemini, Ollama, custom APIs) with secure API key storage, connection testing, and provider-specific settings.
 
-### Hick's Law
-- **Principle**: Decision time increases with number of options
-- **Implementation**:
-  - Limit main actions to 3-5 primary functions (send, attach, voice, etc.)
-  - Progressive disclosure for advanced features (reactions, formatting)
-  - Use contextual menus rather than overwhelming toolbars
+### System Prompts
+Create and manage reusable system prompts for structured outputs, specific topics, and consistent AI behavior across conversations.
 
-### Miller's Rule (7±2)
-- **Principle**: Working memory can hold 7±2 items
-- **Implementation**:
-  - Display 5-9 recent conversations in sidebar
-  - Limit quick action buttons to 5-7 options
-  - Group related settings into logical sections
+### API Management
+- **Registration & Monitoring**: Register custom AI APIs, monitor health/performance metrics, track usage patterns
+- **History & Analytics**: Detailed API call logs, usage statistics, and performance analysis
 
-### Jakob's Law
-- **Principle**: Users expect your app to work like other apps they know
-- **Implementation**:
-  - Follow conventions from WhatsApp, iMessage, Slack patterns
-  - Use standard gestures (swipe for actions, pull to refresh)
-  - Implement familiar keyboard shortcuts (Cmd+Enter to send)
+### Additional Features
+- **Authentication**: Secure user login/signup with session management
+- **Knowledge Base**: Document storage and retrieval system
+- **Image Generation**: AI-powered image creation tools
+- **OCR Reader**: Text extraction from images
+- **Automation**: Workflow templates and automation tools
 
-### Gestalt Principles
-- **Proximity**: Group related messages by time and sender
-- **Similarity**: Use consistent styling for message types
-- **Continuity**: Create clear conversation flow with proper alignment
-- **Closure**: Use incomplete loading states that suggest completion
-
-### Von Restorff Effect (Isolation Effect)
-- **Principle**: Distinctive items are more memorable
-- **Implementation**:
-  - Highlight unread messages with subtle accent colors
-  - Use unique styling for system messages and notifications
-  - Make error states visually distinct without being alarming
-
-### Zeigarnik Effect
-- **Principle**: Incomplete tasks are remembered better than completed ones
-- **Implementation**:
-  - Show typing indicators to create anticipation
-  - Use progressive loading for long AI responses
-  - Display "draft" indicators for unsent messages
+*For detailed technical documentation, see `/docs/features/` directory*

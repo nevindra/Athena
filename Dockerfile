@@ -1,6 +1,9 @@
 # Multi-stage Dockerfile for Athena monorepo
 FROM oven/bun:1.2.15-alpine AS base
 
+# Build argument for configurable frontend port
+ARG FRONTEND_PORT=4003
+
 WORKDIR /app
 
 # Copy package.json files for dependency installation
@@ -27,6 +30,9 @@ RUN cd apps/frontend && cp .env.production .env && bun run build
 # Stage 3: Production runtime
 FROM oven/bun:1.2.15-alpine AS runtime
 
+# Build argument for configurable frontend port
+ARG FRONTEND_PORT=4003
+
 # Install nginx for reverse proxy
 RUN apk add --no-cache nginx
 
@@ -51,19 +57,18 @@ COPY --from=build /app/apps/frontend/build ./apps/frontend/build/
 # Copy production environment files
 COPY apps/backend-api/.env.production ./apps/backend-api/.env.production
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy nginx configuration template
+COPY nginx.conf.template /app/nginx.conf.template
 
 # Copy startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Expose nginx port (nginx will proxy to backend and frontend)
-EXPOSE 80
+# Set frontend port as environment variable
+ENV FRONTEND_PORT=${FRONTEND_PORT}
 
-# # Health check
-# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-#     CMD bun -e "fetch('http://localhost:3000').then(r => r.status === 200 ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+# Expose configurable frontend port
+EXPOSE ${FRONTEND_PORT}
 
 # Start both processes with detailed logging
 CMD ["/app/start.sh"]

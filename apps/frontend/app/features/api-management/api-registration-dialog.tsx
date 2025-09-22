@@ -10,9 +10,10 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
-import { useConfigurations } from "~/hooks/use-configurations";
 import { useCreateApiRegistration } from "~/hooks/use-api-registrations";
+import { useConfigurations } from "~/hooks/use-configurations";
 import { useSystemPrompts } from "~/hooks/use-system-prompts";
+import { useCurrentUser } from "~/hooks/use-current-user";
 
 interface ApiRegistrationData {
   name: string;
@@ -26,8 +27,9 @@ interface ApiRegistrationDialogProps {
 }
 
 export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) {
-  const { data: configurations } = useConfigurations();
-  const { data: systemPrompts } = useSystemPrompts();
+  const { userId } = useCurrentUser();
+  const { data: configurations } = useConfigurations(userId || "");
+  const { data: systemPrompts } = useSystemPrompts(userId || "");
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<ApiRegistrationData>({
     name: "",
@@ -51,8 +53,12 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
     e.preventDefault();
 
     try {
-      // TODO: Get actual user ID from auth context
-      const userId = "01HZXM0K1QRST9VWXYZ01234AB"; // Using existing user ID
+      if (!userId) {
+        toast.error("Authentication required", {
+          description: "Please log in to register an API.",
+        });
+        return;
+      }
 
       await createApiRegistration.mutateAsync({
         userId,
@@ -99,13 +105,13 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Register New API</DialogTitle>
+          <DialogTitle className="font-bold tracking-tight text-foreground">Register New API</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="api-name">API Name *</Label>
+              <Label htmlFor="api-name" className="text-foreground">API Name *</Label>
               <Input
                 id="api-name"
                 placeholder="Enter a descriptive name for your API"
@@ -116,7 +122,7 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="api-description">Description</Label>
+              <Label htmlFor="api-description" className="text-foreground">Description</Label>
               <Textarea
                 id="api-description"
                 placeholder="Describe what this API is used for"
@@ -127,7 +133,7 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="configuration-select">AI Configuration *</Label>
+              <Label htmlFor="configuration-select" className="text-foreground">AI Configuration *</Label>
               <Select
                 value={formData.selectedConfiguration}
                 onValueChange={(value) => handleInputChange("selectedConfiguration", value)}
@@ -152,7 +158,7 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
 
 
             <div className="space-y-2">
-              <Label htmlFor="system-prompt-select">System Prompt (Optional)</Label>
+              <Label htmlFor="system-prompt-select" className="text-foreground">System Prompt (Optional)</Label>
               <Select
                 value={formData.selectedSystemPrompt}
                 onValueChange={(value) => handleInputChange("selectedSystemPrompt", value)}
@@ -161,7 +167,9 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
                   <SelectValue placeholder="Choose a system prompt for structured output" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No system prompt</SelectItem>
+                  <SelectItem value="none">
+                    No system prompt
+                  </SelectItem>
                   {systemPrompts?.map((prompt) => (
                     <SelectItem key={prompt.id} value={prompt.id}>
                       {prompt.title} ({prompt.category})
