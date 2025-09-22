@@ -40,6 +40,7 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
         ),
         userId: t.String(),
         configurationId: t.Optional(t.String()),
+        apiRegistrationId: t.Optional(t.String()),
         sessionId: t.Optional(t.String()),
         systemPromptId: t.Optional(t.String()),
         files: t.Optional(
@@ -112,6 +113,7 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
         ),
         userId: t.String(),
         configurationId: t.Optional(t.String()),
+        apiRegistrationId: t.Optional(t.String()),
         sessionId: t.Optional(t.String()),
         systemPromptId: t.Optional(t.String()),
         files: t.Optional(
@@ -133,7 +135,8 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
       try {
         const models = await handleGetModelsRequest(
           query.userId,
-          query.configurationId
+          query.configurationId,
+          query.apiRegistrationId
         );
         return {
           success: true,
@@ -156,6 +159,7 @@ export const aiRoutes = new Elysia({ prefix: "/ai" })
       query: t.Object({
         userId: t.String(),
         configurationId: t.Optional(t.String()),
+        apiRegistrationId: t.Optional(t.String()),
       }),
       response: t.Object({
         success: t.Boolean(),

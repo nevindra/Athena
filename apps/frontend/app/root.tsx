@@ -11,6 +11,7 @@ import {
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { ThemeProvider } from "~/context/theme-context";
 import { queryClient } from "~/lib/query-client";
 
 import type { Route } from "./+types/root";
@@ -46,15 +47,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <QueryClientProvider client={queryClient}>
-          <SidebarProvider defaultOpen={true}>
-            <AppSidebar variant="inset" />
-            <SidebarInset>{children}</SidebarInset>
-          </SidebarProvider>
-          <ReactQueryDevtools initialIsOpen={false} />
-          <ScrollRestoration />
-          <Scripts />
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <SidebarProvider defaultOpen={true}>
+              <AppSidebar variant="inset" />
+              <SidebarInset>{children}</SidebarInset>
+            </SidebarProvider>
+            <ReactQueryDevtools initialIsOpen={false} />
+            <ScrollRestoration />
+            <Scripts />
+          </QueryClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

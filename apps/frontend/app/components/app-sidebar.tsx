@@ -5,6 +5,7 @@ import type * as React from "react";
 
 import { NavMain } from "@/components/navigation/nav-main";
 import { NavUser } from "@/components/navigation/nav-user";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -129,7 +130,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <div className="flex items-center justify-between px-3 py-2">
+          <NavUser user={data.user} />
+          <div className="group-data-[collapsible=icon]:hidden">
+            <ThemeToggle />
+          </div>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

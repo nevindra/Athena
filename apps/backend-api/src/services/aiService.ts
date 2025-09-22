@@ -1,8 +1,13 @@
 import type { AIProvider } from "@athena/shared";
+import { eq, and } from "drizzle-orm";
+import { db } from "../db";
+import { apiRegistrations } from "../db/schema";
 import { getAIConfig, getSystemPrompt } from "./configurationService";
+import { encryptionService } from "./encryptionService";
 import { GeminiProvider } from "./providers/geminiProvider";
 import { HttpApiProvider } from "./providers/httpApiProvider";
 import { OllamaProvider } from "./providers/ollamaProvider";
+import { RegisteredApiProvider } from "./providers/registeredApiProvider";
 import type {
   AttachmentFile,
   ChatMessage,
@@ -13,6 +18,7 @@ export interface ChatRequest {
   messages: ChatMessage[];
   userId: string;
   configurationId?: string;
+  apiRegistrationId?: string;
   sessionId?: string;
   systemPromptId?: string;
   files?: StatelessFile[];
@@ -51,23 +57,46 @@ export async function generateChatResponse(
     messages,
     userId,
     configurationId,
+    apiRegistrationId,
     systemPromptId,
     attachmentFiles,
     files,
   } = request;
 
   try {
-    // Get AI configuration from database
-    const { provider, settings } = await getAIConfig(userId, configurationId);
-
     // Get system prompt if provided
     let systemPrompt = null;
     if (systemPromptId) {
       systemPrompt = await getSystemPrompt(userId, systemPromptId);
     }
 
-    // Create provider instance
-    const providerInstance = createProvider(provider, settings);
+    let providerInstance: any;
+
+    // Check if using registered API
+    if (apiRegistrationId) {
+      // Get API registration from database
+      const registration = await db.query.apiRegistrations.findFirst({
+        where: and(
+          eq(apiRegistrations.id, apiRegistrationId),
+          eq(apiRegistrations.userId, userId),
+          eq(apiRegistrations.isActive, true)
+        ),
+      });
+
+      if (!registration) {
+        throw new Error("API registration not found or inactive");
+      }
+
+      // Decrypt API key if present
+      const decryptedApiKey = registration.apiKey ? encryptionService.decrypt(registration.apiKey) : undefined;
+
+      // Create registered API provider instance
+      providerInstance = new RegisteredApiProvider(registration, decryptedApiKey);
+    } else {
+      // Use traditional AI configuration
+      const { provider, settings } = await getAIConfig(userId, configurationId);
+      providerInstance = createProvider(provider, settings);
+    }
 
     // Generate response using the provider
     const result = await providerInstance.generateResponse(
@@ -100,23 +129,46 @@ export async function streamChatResponse(request: ChatRequest) {
     messages,
     userId,
     configurationId,
+    apiRegistrationId,
     systemPromptId,
     attachmentFiles,
     files,
   } = request;
 
   try {
-    // Get AI configuration from database
-    const { provider, settings } = await getAIConfig(userId, configurationId);
-
     // Get system prompt if provided
     let systemPrompt = null;
     if (systemPromptId) {
       systemPrompt = await getSystemPrompt(userId, systemPromptId);
     }
 
-    // Create provider instance
-    const providerInstance = createProvider(provider, settings);
+    let providerInstance: any;
+
+    // Check if using registered API
+    if (apiRegistrationId) {
+      // Get API registration from database
+      const registration = await db.query.apiRegistrations.findFirst({
+        where: and(
+          eq(apiRegistrations.id, apiRegistrationId),
+          eq(apiRegistrations.userId, userId),
+          eq(apiRegistrations.isActive, true)
+        ),
+      });
+
+      if (!registration) {
+        throw new Error("API registration not found or inactive");
+      }
+
+      // Decrypt API key if present
+      const decryptedApiKey = registration.apiKey ? encryptionService.decrypt(registration.apiKey) : undefined;
+
+      // Create registered API provider instance
+      providerInstance = new RegisteredApiProvider(registration, decryptedApiKey);
+    } else {
+      // Use traditional AI configuration
+      const { provider, settings } = await getAIConfig(userId, configurationId);
+      providerInstance = createProvider(provider, settings);
+    }
 
     // Stream response using the provider
     return await providerInstance.streamResponse(
@@ -133,14 +185,37 @@ export async function streamChatResponse(request: ChatRequest) {
 
 export async function getAvailableModels(
   userId: string,
-  configurationId?: string
+  configurationId?: string,
+  apiRegistrationId?: string
 ): Promise<string[]> {
   try {
-    // Get AI configuration from database
-    const { provider, settings } = await getAIConfig(userId, configurationId);
+    let providerInstance: any;
 
-    // Create provider instance
-    const providerInstance = createProvider(provider, settings);
+    // Check if using registered API
+    if (apiRegistrationId) {
+      // Get API registration from database
+      const registration = await db.query.apiRegistrations.findFirst({
+        where: and(
+          eq(apiRegistrations.id, apiRegistrationId),
+          eq(apiRegistrations.userId, userId),
+          eq(apiRegistrations.isActive, true)
+        ),
+      });
+
+      if (!registration) {
+        throw new Error("API registration not found or inactive");
+      }
+
+      // Decrypt API key if present
+      const decryptedApiKey = registration.apiKey ? encryptionService.decrypt(registration.apiKey) : undefined;
+
+      // Create registered API provider instance
+      providerInstance = new RegisteredApiProvider(registration, decryptedApiKey);
+    } else {
+      // Use traditional AI configuration
+      const { provider, settings } = await getAIConfig(userId, configurationId);
+      providerInstance = createProvider(provider, settings);
+    }
 
     // Get available models from the provider
     return await providerInstance.getAvailableModels();

@@ -1,23 +1,24 @@
 "use client";
 
+import type { SystemPrompt } from "@athena/shared";
+import { Plus, Save } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useConfigurations } from "~/hooks/use-configurations";
-import { Plus, Save } from "lucide-react";
-import { toast } from "sonner";
+import { useCreateApiRegistration } from "~/hooks/use-api-registrations";
+import { useSystemPrompts } from "~/hooks/use-system-prompts";
 
 interface ApiRegistrationData {
   name: string;
   description: string;
-  selectedModel: string;
-  useStructuredOutput: boolean;
+  selectedConfiguration: string;
+  selectedSystemPrompt: string;
 }
 
 interface ApiRegistrationDialogProps {
@@ -26,16 +27,18 @@ interface ApiRegistrationDialogProps {
 
 export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) {
   const { data: configurations } = useConfigurations();
+  const { data: systemPrompts } = useSystemPrompts();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<ApiRegistrationData>({
     name: "",
     description: "",
-    selectedModel: "",
-    useStructuredOutput: false,
+    selectedConfiguration: "",
+    selectedSystemPrompt: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleInputChange = (field: keyof ApiRegistrationData, value: string | boolean) => {
+  const createApiRegistration = useCreateApiRegistration();
+
+  const handleInputChange = (field: keyof ApiRegistrationData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
@@ -43,13 +46,24 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
   };
 
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
-      // Simulate API registration - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // TODO: Get actual user ID from auth context
+      const userId = "01HZXM0K1QRST9VWXYZ01234AB"; // Using existing user ID
+
+      await createApiRegistration.mutateAsync({
+        userId,
+        data: {
+          name: formData.name,
+          description: formData.description || undefined,
+          configurationId: formData.selectedConfiguration,
+          systemPromptId: formData.selectedSystemPrompt === "none" ? undefined : formData.selectedSystemPrompt,
+          isActive: true,
+        },
+      });
 
       toast.success("API registered successfully", {
         description: `${formData.name} has been added to your API management dashboard.`,
@@ -59,20 +73,19 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
       setFormData({
         name: "",
         description: "",
-        selectedModel: "",
-        useStructuredOutput: false,
+        selectedConfiguration: "",
+        selectedSystemPrompt: "",
       });
       setOpen(false);
     } catch (error) {
       toast.error("Registration failed", {
-        description: "Failed to register the API. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to register the API. Please try again.",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const isFormValid = formData.name && formData.selectedModel;
+  const isFormValid = formData.name && formData.selectedConfiguration;
+  const isLoading = createApiRegistration.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -113,15 +126,14 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
               />
             </div>
 
-
             <div className="space-y-2">
-              <Label htmlFor="model-select">Select Model *</Label>
+              <Label htmlFor="configuration-select">AI Configuration *</Label>
               <Select
-                value={formData.selectedModel}
-                onValueChange={(value) => handleInputChange("selectedModel", value)}
+                value={formData.selectedConfiguration}
+                onValueChange={(value) => handleInputChange("selectedConfiguration", value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a configured model" />
+                  <SelectValue placeholder="Choose an AI configuration" />
                 </SelectTrigger>
                 <SelectContent>
                   {configurations?.map((config) => (
@@ -131,20 +143,37 @@ export function ApiRegistrationDialog({ children }: ApiRegistrationDialogProps) 
                   ))}
                   {(!configurations || configurations.length === 0) && (
                     <SelectItem value="none" disabled>
-                      No models configured
+                      No configurations available
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="structured-output"
-                checked={formData.useStructuredOutput}
-                onCheckedChange={(checked) => handleInputChange("useStructuredOutput", checked)}
-              />
-              <Label htmlFor="structured-output">Use Structured Output</Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="system-prompt-select">System Prompt (Optional)</Label>
+              <Select
+                value={formData.selectedSystemPrompt}
+                onValueChange={(value) => handleInputChange("selectedSystemPrompt", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a system prompt for structured output" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No system prompt</SelectItem>
+                  {systemPrompts?.map((prompt) => (
+                    <SelectItem key={prompt.id} value={prompt.id}>
+                      {prompt.title} ({prompt.category})
+                    </SelectItem>
+                  ))}
+                  {(!systemPrompts || systemPrompts.length === 0) && (
+                    <SelectItem value="no-prompts" disabled>
+                      No system prompts available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

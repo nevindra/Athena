@@ -5,19 +5,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
   Activity,
   AlertCircle,
   CheckCircle,
   Clock,
   Copy,
+  Edit3,
   Eye,
   EyeOff,
+  ExternalLink,
   Globe,
+  MoreHorizontal,
   RefreshCw,
+  Trash2,
   Zap,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
+import { useApiRegistrations, useDeleteApiRegistration, useUpdateApiRegistration } from "~/hooks/use-api-registrations";
+import { useApiMetrics, useMetricsSummary } from "~/hooks/use-api-metrics";
+import { ApiDocumentationDialog } from "./api-documentation-dialog";
+import { ApiSummaryCards } from "./api-summary-cards";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
+import { useConfigurations } from "~/hooks/use-configurations";
+import { useSystemPrompts } from "~/hooks/use-system-prompts";
+import type { ApiRegistration, TimeRange } from "@athena/shared";
+import { calculateSuccessRate, calculateErrorRate } from "@athena/shared";
 
 interface ApiStatus {
   id: string;
@@ -32,45 +57,24 @@ interface ApiStatus {
   errorRate: number;
 }
 
-// Mock data - replace with actual API calls
-const mockApiData: ApiStatus[] = [
-  {
-    id: "1",
-    name: "OpenAI Chat API",
-    endpoint: "https://athena-api.your-domain.com/api/v1/chat/1",
-    apiKey: "ak_1234567890abcdef1234567890abcdef",
-    status: "online",
-    lastChecked: new Date().toISOString(),
-    responseTime: 245,
-    uptime: 99.9,
-    requestCount: 1250,
-    errorRate: 0.1,
-  },
-  {
-    id: "2",
-    name: "Custom ML Model",
-    endpoint: "https://athena-api.your-domain.com/api/v1/chat/2",
-    apiKey: "ak_abcdef1234567890abcdef1234567890",
-    status: "warning",
-    lastChecked: new Date(Date.now() - 300000).toISOString(),
-    responseTime: 1200,
-    uptime: 97.5,
-    requestCount: 850,
-    errorRate: 2.3,
-  },
-  {
-    id: "3",
-    name: "Data Processing API",
-    endpoint: "https://athena-api.your-domain.com/api/v1/chat/3",
-    apiKey: "ak_fedcba0987654321fedcba0987654321",
-    status: "offline",
-    lastChecked: new Date(Date.now() - 900000).toISOString(),
-    responseTime: 0,
-    uptime: 85.2,
-    requestCount: 320,
-    errorRate: 15.8,
-  },
-];
+interface ApiMetricsDetails {
+  successCount: number;
+  errorCount4xx: number;
+  errorCount5xx: number;
+  totalErrorCount: number;
+  minResponseTime: number;
+  maxResponseTime: number;
+  successRate: number;
+}
+
+interface ApiMonitoringCardProps {
+  api: ApiStatus;
+  metrics: ApiMetricsDetails;
+  onViewDocumentation: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleteLoading: boolean;
+}
 
 function ApiKeyDisplay({ apiKey, apiName }: { apiKey: string; apiName: string }) {
   const [isVisible, setIsVisible] = useState(false);
@@ -111,25 +115,9 @@ function ApiKeyDisplay({ apiKey, apiName }: { apiKey: string; apiName: string })
   );
 }
 
-export function ApiMonitoringDashboard() {
-  const [apis, setApis] = useState<ApiStatus[]>(mockApiData);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate API refresh
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Update mock data with new timestamps
-    setApis(current =>
-      current.map(api => ({
-        ...api,
-        lastChecked: new Date().toISOString(),
-        responseTime: api.status === "online" ? Math.random() * 500 + 100 : 0,
-      }))
-    );
-    setIsRefreshing(false);
-  };
+function ApiMonitoringCard({ api, metrics, onViewDocumentation, onEdit, onDelete, deleteLoading }: ApiMonitoringCardProps) {
+  const [showDetails, setShowDetails] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const getStatusIcon = (status: ApiStatus["status"]) => {
     switch (status) {
@@ -167,143 +155,518 @@ export function ApiMonitoringDashboard() {
     return `${days}d ago`;
   };
 
-  // Calculate summary stats
+  const copyEndpoint = async () => {
+    try {
+      await navigator.clipboard.writeText(api.endpoint);
+      toast.success("Endpoint copied to clipboard");
+    } catch (err) {
+      toast.error("Failed to copy endpoint");
+    }
+  };
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        {/* Primary Information - Always Visible */}
+        <div className="space-y-3">
+          {/* Header with Status */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              {getStatusIcon(api.status)}
+              <div>
+                <h3 className="font-medium text-sm">{api.name}</h3>
+                <p className="text-xs text-muted-foreground">
+                  Last checked: {formatLastChecked(api.lastChecked)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(api.status)}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onViewDocumentation}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Documentation
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Edit3 className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-destructive"
+                    disabled={deleteLoading}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Core Metrics - Always Visible */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-muted/50 rounded p-2">
+              <p className="text-sm font-medium">{api.requestCount}</p>
+              <p className="text-xs text-muted-foreground">Requests</p>
+            </div>
+            <div className="bg-muted/50 rounded p-2">
+              <p className="text-sm font-medium text-green-600">{metrics.successRate}%</p>
+              <p className="text-xs text-muted-foreground">Success</p>
+            </div>
+            <div className="bg-muted/50 rounded p-2">
+              <p className="text-sm font-medium">{api.responseTime}ms</p>
+              <p className="text-xs text-muted-foreground">Avg RT</p>
+            </div>
+          </div>
+
+          {/* Endpoint with Copy Button */}
+          <div className="flex items-center justify-between bg-muted/30 rounded p-2">
+            <code className="text-xs font-mono truncate flex-1 mr-2">{api.endpoint}</code>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={copyEndpoint}
+              className="h-6 w-6 p-0 flex-shrink-0"
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {/* Toggle Details Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDetails(!showDetails)}
+            className="w-full justify-center gap-2"
+          >
+            {showDetails ? "Hide Details" : "View Details"}
+            {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+
+          {/* Detailed Information - Progressive Disclosure */}
+          {showDetails && (
+            <div className="space-y-3 pt-2 border-t">
+              {/* Detailed Metrics */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Success:</span>
+                  <span className="font-medium text-green-600">{metrics.successCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Failed:</span>
+                  <span className="font-medium text-red-600">{metrics.totalErrorCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Min Response:</span>
+                  <span className="font-medium">{metrics.minResponseTime}ms</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Max Response:</span>
+                  <span className="font-medium">{metrics.maxResponseTime}ms</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">4xx Errors:</span>
+                  <span className="font-medium text-orange-600">{metrics.errorCount4xx}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">5xx Errors:</span>
+                  <span className="font-medium text-red-600">{metrics.errorCount5xx}</span>
+                </div>
+              </div>
+
+              {/* API Key Management */}
+              <div className="space-y-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="w-full justify-center gap-2 text-xs"
+                >
+                  {showApiKey ? "Hide API Key" : "Show API Key"}
+                  {showApiKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                </Button>
+
+                {showApiKey && (
+                  <div className="bg-muted/50 rounded p-2">
+                    <ApiKeyDisplay apiKey={api.apiKey} apiName={api.name} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ApiMonitoringDashboard() {
+  // TODO: Get actual user ID from auth context
+  const userId = "01HZXM0K1QRST9VWXYZ01234AB"; // Using existing user ID
+
+  const [timeRange, setTimeRange] = useState<TimeRange>("24h");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedApi, setSelectedApi] = useState<ApiRegistration | null>(null);
+  const [docDialogOpen, setDocDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedEditApi, setSelectedEditApi] = useState<ApiRegistration | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    description: "",
+    configurationId: "",
+    systemPromptId: "",
+    isActive: true,
+  });
+
+  const { data: registrations, isLoading, error, refetch } = useApiRegistrations(userId);
+  const { data: configurations } = useConfigurations();
+  const { data: systemPrompts } = useSystemPrompts();
+  const { data: metricsSummary } = useMetricsSummary(userId, timeRange);
+  const deleteApiRegistration = useDeleteApiRegistration();
+  const updateApiRegistration = useUpdateApiRegistration();
+
+  // Convert API registrations to monitoring format with enhanced data from summary
+  const apis: ApiStatus[] = registrations?.map((reg) => {
+    // Find corresponding metrics from the summary
+    const apiMetrics = metricsSummary?.apiMetrics.find(m => m.registrationId === reg.id);
+    const errorRate = apiMetrics ? calculateErrorRate(
+      apiMetrics.errorCounts["4xx"] + apiMetrics.errorCounts["5xx"],
+      apiMetrics.totalRequests
+    ) : 0;
+
+    return {
+      id: reg.id,
+      name: reg.name,
+      endpoint: `${reg.baseUrl}/chat`,
+      apiKey: reg.apiKey,
+      status: reg.isActive ? (errorRate > 50 ? "warning" : "online") : "offline" as const,
+      lastChecked: reg.updatedAt,
+      responseTime: Number(apiMetrics?.responseTimes.average) || 0,
+      uptime: Math.max(0, 100 - errorRate),
+      requestCount: Number(apiMetrics?.totalRequests) || 0,
+      errorRate: errorRate,
+    };
+  }) || [];
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      toast.error("Failed to refresh API data");
+    }
+    setIsRefreshing(false);
+  };
+
+  const handleViewDocumentation = (apiId: string) => {
+    const api = registrations?.find(reg => reg.id === apiId);
+    if (api) {
+      setSelectedApi(api);
+      setDocDialogOpen(true);
+    }
+  };
+
+  const handleDelete = async (apiId: string, apiName: string) => {
+    if (!confirm(`Are you sure you want to delete "${apiName}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteApiRegistration.mutateAsync({ userId, registrationId: apiId });
+      toast.success("API registration deleted", {
+        description: `${apiName} has been removed from your registered APIs.`,
+      });
+    } catch (error) {
+      toast.error("Failed to delete API registration", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  };
+
+  const handleEdit = (apiId: string) => {
+    const api = registrations?.find(reg => reg.id === apiId);
+    if (api) {
+      setSelectedEditApi(api);
+      setEditFormData({
+        name: api.name,
+        description: api.description || "",
+        configurationId: api.configurationId,
+        systemPromptId: api.systemPromptId || "",
+        isActive: api.isActive,
+      });
+      setEditDialogOpen(true);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEditApi) return;
+
+    try {
+      await updateApiRegistration.mutateAsync({
+        userId,
+        registrationId: selectedEditApi.id,
+        data: {
+          name: editFormData.name,
+          description: editFormData.description,
+          configurationId: editFormData.configurationId,
+          systemPromptId: editFormData.systemPromptId || undefined,
+          isActive: editFormData.isActive,
+        },
+      });
+
+      toast.success("API registration updated", {
+        description: `${editFormData.name} has been updated successfully.`,
+      });
+      setEditDialogOpen(false);
+    } catch (error) {
+      toast.error("Failed to update API registration", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  };
+
+  const handleEditInputChange = (field: string, value: string | boolean) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Calculate summary stats from real metrics data
   const totalApis = apis.length;
   const onlineApis = apis.filter(api => api.status === "online").length;
-  const avgResponseTime = apis
-    .filter(api => api.status === "online")
-    .reduce((sum, api) => sum + api.responseTime, 0) / onlineApis || 0;
-  const totalRequests = apis.reduce((sum, api) => sum + api.requestCount, 0);
+  const avgResponseTime = Number(metricsSummary?.summary.responseTimes.average) || 0;
+  const totalRequests = Number(metricsSummary?.summary.totalRequests) || 0;
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="text-destructive">Failed to load API monitoring data</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error instanceof Error ? error.message : "Unknown error occurred"}
+            </p>
+            <Button onClick={handleRefresh} className="mt-4">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total APIs</p>
-                <p className="text-2xl font-bold">{totalApis}</p>
-              </div>
-              <Globe className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Online</p>
-                <p className="text-2xl font-bold text-green-600">{onlineApis}</p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Response</p>
-                <p className="text-2xl font-bold">{Math.round(avgResponseTime)}ms</p>
-              </div>
-              <Zap className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Requests</p>
-                <p className="text-2xl font-bold">{totalRequests.toLocaleString()}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ApiSummaryCards
+        data={{
+          totalApis,
+          onlineApis,
+          avgResponseTime,
+          totalRequests,
+          trends: {
+            apis: "stable",
+            responseTime: avgResponseTime < 1000 ? "down" : "stable",
+            requests: totalRequests > 0 ? "up" : "stable"
+          }
+        }}
+        isLoading={isLoading}
+      />
 
       {/* API Status Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>API Status</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select value={timeRange} onValueChange={(value: TimeRange) => setTimeRange(value)}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">24h</SelectItem>
+                <SelectItem value="7d">7d</SelectItem>
+                <SelectItem value="30d">30d</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {apis.map((api) => (
-              <div
-                key={api.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  {getStatusIcon(api.status)}
-                  <div className="space-y-1">
-                    <h3 className="font-medium">{api.name}</h3>
-                    <p className="text-sm text-muted-foreground">{api.endpoint}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">API Key:</span>
-                      <ApiKeyDisplay apiKey={api.apiKey} apiName={api.name} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-6 text-sm">
-                  <div className="text-center">
-                    <p className="font-medium">{api.responseTime}ms</p>
-                    <p className="text-muted-foreground">Response</p>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="font-medium">{api.uptime}%</p>
-                    <p className="text-muted-foreground">Uptime</p>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="font-medium">{api.requestCount}</p>
-                    <p className="text-muted-foreground">Requests</p>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="font-medium">{api.errorRate}%</p>
-                    <p className="text-muted-foreground">Error Rate</p>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="font-medium">{formatLastChecked(api.lastChecked)}</p>
-                    <p className="text-muted-foreground">Last Check</p>
-                  </div>
-
-                  {getStatusBadge(api.status)}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {apis.length === 0 && (
+          {isLoading ? (
             <div className="text-center py-12">
-              <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No APIs Registered</h3>
-              <p className="text-muted-foreground">
-                Register your first API to start monitoring its performance.
-              </p>
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">Loading API monitoring data...</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {apis.map((api) => {
+                // Get detailed metrics for this specific API
+                const apiMetrics = metricsSummary?.apiMetrics.find(m => m.registrationId === api.id);
+                const successCount = Number(apiMetrics?.successCount) || 0;
+                const errorCount4xx = Number(apiMetrics?.errorCounts["4xx"]) || 0;
+                const errorCount5xx = Number(apiMetrics?.errorCounts["5xx"]) || 0;
+                const totalErrorCount = errorCount4xx + errorCount5xx;
+                const minResponseTime = Number(apiMetrics?.responseTimes.min) || 0;
+                const maxResponseTime = Number(apiMetrics?.responseTimes.max) || 0;
+                const successRate = api.requestCount > 0 ? Math.round((successCount / api.requestCount) * 100) : 0;
+
+                return (
+                  <ApiMonitoringCard
+                    key={api.id}
+                    api={api}
+                    metrics={{
+                      successCount,
+                      errorCount4xx,
+                      errorCount5xx,
+                      totalErrorCount,
+                      minResponseTime,
+                      maxResponseTime,
+                      successRate,
+                    }}
+                    onViewDocumentation={() => handleViewDocumentation(api.id)}
+                    onEdit={() => handleEdit(api.id)}
+                    onDelete={() => handleDelete(api.id, api.name)}
+                    deleteLoading={deleteApiRegistration.isPending}
+                  />
+                );
+              })}
+
+              {apis.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No APIs Registered</h3>
+                  <p className="text-muted-foreground">
+                    Register your first API to start monitoring its performance.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <ApiDocumentationDialog
+        api={selectedApi}
+        open={docDialogOpen}
+        onOpenChange={setDocDialogOpen}
+      />
+
+      {/* Edit API Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit API Registration</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editFormData.name}
+                onChange={(e) => handleEditInputChange("name", e.target.value)}
+                placeholder="Enter API name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editFormData.description}
+                onChange={(e) => handleEditInputChange("description", e.target.value)}
+                placeholder="Enter API description (optional)"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-configuration">AI Configuration</Label>
+              <Select
+                value={editFormData.configurationId}
+                onValueChange={(value) => handleEditInputChange("configurationId", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a configuration" />
+                </SelectTrigger>
+                <SelectContent>
+                  {configurations?.map((config) => (
+                    <SelectItem key={config.id} value={config.id}>
+                      {config.name} ({config.provider})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-system-prompt">System Prompt (Optional)</Label>
+              <Select
+                value={editFormData.systemPromptId}
+                onValueChange={(value) => handleEditInputChange("systemPromptId", value === "none" ? "" : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a system prompt" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No system prompt</SelectItem>
+                  {systemPrompts?.map((prompt) => (
+                    <SelectItem key={prompt.id} value={prompt.id}>
+                      {prompt.title} ({prompt.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-is-active"
+                checked={editFormData.isActive}
+                onChange={(e) => handleEditInputChange("isActive", e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="edit-is-active">Active</Label>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateApiRegistration.isPending}
+              >
+                {updateApiRegistration.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

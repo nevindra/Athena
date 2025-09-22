@@ -180,7 +180,7 @@ export function EnhancedChatInput({
       <FileAttachments files={files} onRemoveFile={removeFile} />
 
       {/* Main input container */}
-      <div className="relative border border-border/30 rounded-xl bg-background/95 backdrop-blur-sm focus-within:border-primary/50 focus-within:bg-background transition-all duration-200 shadow-sm hover:shadow-md">
+      <div className="relative border border-border rounded-xl bg-card backdrop-blur-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md">
         <ChatTextarea
           message={message}
           onMessageChange={setMessage}
@@ -192,7 +192,7 @@ export function EnhancedChatInput({
         />
 
         {/* Bottom row with controls */}
-        <div className="flex items-center justify-between px-5 pb-4 pt-1 border-t border-border/10">
+        <div className="flex items-center justify-between px-5 pb-4 pt-1 border-t border-border/20">
           {/* Left side - Model selector */}
           <div className="flex items-center gap-2">
             <ModelSelector
@@ -217,7 +217,7 @@ export function EnhancedChatInput({
               variant="ghost"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="h-8 w-8 p-0 hover:bg-muted/50 text-muted-foreground hover:text-foreground rounded-full transition-colors"
+              className="h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground text-muted-foreground rounded-full transition-colors"
               title="Attach files"
             >
               <Paperclip className="h-4 w-4" />
@@ -236,7 +236,7 @@ export function EnhancedChatInput({
                       !selectedConfig.isActive
                     }
                     size="sm"
-                    className="h-9 w-9 p-0 rounded-full bg-primary hover:bg-primary/90 shadow-sm disabled:opacity-50 transition-all"
+                    className="h-9 w-9 p-0 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm disabled:opacity-50 transition-all"
                   >
                     <svg
                       className="h-4 w-4 text-primary-foreground"

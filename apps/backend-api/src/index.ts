@@ -5,7 +5,10 @@ import { testConnection } from "./config/database";
 import { env, validateEnv } from "./config/env";
 import { StorageFactory } from "./services/storage";
 import { aiRoutes } from "./routes/ai";
+import { apiRegistrationsRoutes } from "./routes/api-registrations";
+import { apiMetricsRoutes } from "./routes/api-metrics";
 import { configurationsRoutes } from "./routes/configurations";
+import { externalApiRoutes } from "./routes/external-api";
 import { filesRoutes } from "./routes/files";
 import { knowledgeBaseFilesRoutes } from "./routes/knowledge-base-files";
 import { knowledgeBasesRoutes } from "./routes/knowledge-bases";
@@ -106,6 +109,9 @@ const app = new Elysia()
   .group(env.API_PREFIX, (app) =>
     app
       .use(configurationsRoutes)
+      .use(apiRegistrationsRoutes)
+      .use(apiMetricsRoutes)
+      .use(externalApiRoutes)
       .use(aiRoutes)
       .use(sessionRoutes)
       .use(filesRoutes)

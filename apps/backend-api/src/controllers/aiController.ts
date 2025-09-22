@@ -23,6 +23,7 @@ export interface ChatRequestBody {
   }>;
   userId: string;
   configurationId?: string;
+  apiRegistrationId?: string;
   sessionId?: string;
   systemPromptId?: string;
   files?: Array<{
@@ -94,6 +95,7 @@ export async function handleChatRequest(body: ChatRequestBody) {
     messages,
     userId,
     configurationId,
+    apiRegistrationId,
     sessionId,
     systemPromptId,
     files,
@@ -126,6 +128,7 @@ export async function handleChatRequest(body: ChatRequestBody) {
     messages,
     userId,
     configurationId,
+    apiRegistrationId,
     sessionId,
     systemPromptId,
     files,
@@ -155,6 +158,7 @@ export async function handleStreamChatRequest(body: ChatRequestBody) {
     messages,
     userId,
     configurationId,
+    apiRegistrationId,
     sessionId,
     systemPromptId,
     files,
@@ -187,6 +191,7 @@ export async function handleStreamChatRequest(body: ChatRequestBody) {
     messages,
     userId,
     configurationId,
+    apiRegistrationId,
     sessionId,
     systemPromptId,
     files,
@@ -203,11 +208,12 @@ export async function handleStreamChatRequest(body: ChatRequestBody) {
 
 export async function handleGetModelsRequest(
   userId: string,
-  configurationId?: string
+  configurationId?: string,
+  apiRegistrationId?: string
 ) {
   if (!userId) {
     throw new Error("User ID is required");
   }
 
-  return await getAvailableModels(userId, configurationId);
+  return await getAvailableModels(userId, configurationId, apiRegistrationId);
 }
